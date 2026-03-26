@@ -25,8 +25,8 @@ export const accountSchema = z.object({
 
 export const transactionSchema = z.object({
   accountId: z.string().uuid('Conta é obrigatória'),
-  toAccountId: z.string().uuid().optional(),
-  categoryId: z.string().uuid().optional(),
+  toAccountId: z.string().uuid().optional().or(z.literal('')).transform(v => v || undefined),
+  categoryId: z.string().uuid().optional().or(z.literal('')).transform(v => v || undefined),
   type: z.enum(['income', 'expense', 'transfer']),
   amount: z.coerce.number().positive('Valor deve ser positivo'),
   description: z.string().optional(),
@@ -53,10 +53,15 @@ export const goalSchema = z.object({
   deadline: z.coerce.date().optional(),
 })
 
+export const goalContributionSchema = z.object({
+  amount: z.coerce.number().positive('Valor deve ser positivo'),
+  accountId: z.string().uuid('Selecione uma conta'),
+})
+
 export const recurringTransactionSchema = z.object({
   accountId: z.string().uuid('Conta é obrigatória'),
-  toAccountId: z.string().uuid().optional(),
-  categoryId: z.string().uuid().optional(),
+  toAccountId: z.string().uuid().optional().or(z.literal('')).transform(v => v || undefined),
+  categoryId: z.string().uuid().optional().or(z.literal('')).transform(v => v || undefined),
   type: z.enum(['income', 'expense', 'transfer']),
   amount: z.coerce.number().positive('Valor deve ser positivo'),
   description: z.string().optional(),
@@ -72,4 +77,5 @@ export type TransactionInput = z.infer<typeof transactionSchema>
 export type CategoryInput = z.infer<typeof categorySchema>
 export type BudgetInput = z.infer<typeof budgetSchema>
 export type GoalInput = z.infer<typeof goalSchema>
+export type GoalContributionInput = z.infer<typeof goalContributionSchema>
 export type RecurringTransactionInput = z.infer<typeof recurringTransactionSchema>

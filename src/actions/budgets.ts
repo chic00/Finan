@@ -1,7 +1,7 @@
 'use server'
 
 import { auth } from '@/lib/auth'
-import { db, budgets, transactions, categories } from '@/lib/db'
+import { db, budgets, transactions } from '@/lib/db'
 import { eq, and, gte, lte } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { budgetSchema } from '@/lib/validations'
@@ -17,7 +17,6 @@ export async function createOrUpdateBudget(formData: unknown) {
   }
 
   try {
-    // Check if budget already exists for this category/month/year
     const existing = await db.query.budgets.findFirst({
       where: and(
         eq(budgets.userId, session.user.id),
@@ -49,6 +48,24 @@ export async function createOrUpdateBudget(formData: unknown) {
   }
 }
 
+export async function deleteBudget(id: string) {
+  const session = await auth()
+  if (!session?.user?.id) redirect('/login')
+
+  try {
+    const existing = await db.query.budgets.findFirst({ where: eq(budgets.id, id) })
+    if (!existing || existing.userId !== session.user.id) {
+      return { error: 'Orçamento não encontrado' }
+    }
+    await db.delete(budgets).where(eq(budgets.id, id))
+    revalidatePath('/dashboard/orcamentos')
+    return { success: true }
+  } catch (error) {
+    console.error('Error deleting budget:', error)
+    return { error: 'Erro ao excluir orçamento' }
+  }
+}
+
 export async function getBudgets(month: number, year: number) {
   const session = await auth()
   if (!session?.user?.id) return []
@@ -63,43 +80,60 @@ export async function getBudgets(month: number, year: number) {
   })
 }
 
-export async function checkBudgetAlerts(month: number, year: number) {
+// Retorna orçamentos com o valor gasto real no período
+export async function getBudgetsWithSpent(month: number, year: number) {
   const session = await auth()
   if (!session?.user?.id) return []
 
-  const budgetsWithCategory = await getBudgets(month, year)
-  const alerts: Array<{ category: string; budget: number; spent: number; percent: number }> = []
+  const budgetList = await getBudgets(month, year)
+  const start = new Date(year, month - 1, 1)
+  const end = new Date(year, month, 0, 23, 59, 59)
 
-  for (const budget of budgetsWithCategory) {
-    const start = new Date(year, month, 1)
-    const end = new Date(year, month + 1, 0, 23, 59, 59)
-
-    const spentResult = await db
-      .select({ total: transactions.amount })
-      .from(transactions)
-      .where(
-        and(
-          eq(transactions.userId, session.user.id),
-          eq(transactions.categoryId, budget.categoryId),
-          eq(transactions.type, 'expense'),
-          gte(transactions.date, start),
-          lte(transactions.date, end)
+  const result = await Promise.all(
+    budgetList.map(async (budget) => {
+      const spentResult = await db
+        .select({ total: transactions.amount })
+        .from(transactions)
+        .where(
+          and(
+            eq(transactions.userId, session.user.id!),
+            eq(transactions.categoryId, budget.categoryId),
+            eq(transactions.type, 'expense'),
+            gte(transactions.date, start),
+            lte(transactions.date, end)
+          )
         )
+
+      const spent = spentResult.reduce(
+        (sum, t) => sum + parseFloat(t.total as string),
+        0
       )
+      const budgetAmount = parseFloat(budget.amount as string)
+      const percent = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0
 
-    const spent = spentResult.reduce((sum, t) => sum + parseFloat(t.total as string), 0)
-    const budgetAmount = parseFloat(budget.amount as string)
-    const percent = Math.round((spent / budgetAmount) * 100)
-
-    if (percent >= 80) {
-      alerts.push({
-        category: budget.category.name,
-        budget: budgetAmount,
+      return {
+        ...budget,
         spent,
         percent,
-      })
-    }
-  }
+        isOverBudget: spent > budgetAmount,
+        isNearLimit: percent >= 80 && spent <= budgetAmount,
+      }
+    })
+  )
 
-  return alerts
+  return result
+}
+
+export async function checkBudgetAlerts(month: number, year: number) {
+  const budgetsWithSpent = await getBudgetsWithSpent(month, year)
+
+  return budgetsWithSpent
+    .filter((b) => b.percent >= 80)
+    .map((b) => ({
+      category: b.category.name,
+      budget: parseFloat(b.amount as string),
+      spent: b.spent,
+      percent: b.percent,
+      isOverBudget: b.isOverBudget,
+    }))
 }

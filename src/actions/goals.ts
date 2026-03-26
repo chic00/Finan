@@ -1,10 +1,10 @@
 'use server'
 
 import { auth } from '@/lib/auth'
-import { db, goals } from '@/lib/db'
+import { db, goals, transactions, bankAccounts } from '@/lib/db'
 import { eq, desc } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
-import { goalSchema } from '@/lib/validations'
+import { goalSchema, goalContributionSchema } from '@/lib/validations'
 import { redirect } from 'next/navigation'
 
 export async function createGoal(formData: unknown) {
@@ -42,6 +42,11 @@ export async function updateGoal(id: string, formData: unknown) {
   }
 
   try {
+    const existing = await db.query.goals.findFirst({ where: eq(goals.id, id) })
+    if (!existing || existing.userId !== session.user.id) {
+      return { error: 'Meta não encontrada' }
+    }
+
     await db.update(goals)
       .set({
         name: parsed.data.name,
@@ -59,23 +64,35 @@ export async function updateGoal(id: string, formData: unknown) {
   }
 }
 
-export async function contributeToGoal(id: string, amount: number) {
+// FIX: contribuição agora recebe conta de origem e registra uma transação
+export async function contributeToGoal(id: string, amount: number, accountId: string) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
   try {
-    const goal = await db.query.goals.findFirst({
-      where: eq(goals.id, id),
-    })
-
-    if (!goal) {
+    const goal = await db.query.goals.findFirst({ where: eq(goals.id, id) })
+    if (!goal || goal.userId !== session.user.id) {
       return { error: 'Meta não encontrada' }
+    }
+
+    if (goal.isCompleted) {
+      return { error: 'Esta meta já foi concluída' }
+    }
+
+    // Verifica saldo da conta
+    const account = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, accountId) })
+    if (!account || account.userId !== session.user.id) {
+      return { error: 'Conta não encontrada' }
+    }
+    if (parseFloat(account.balance as string) < amount) {
+      return { error: 'Saldo insuficiente na conta selecionada' }
     }
 
     const currentAmount = parseFloat(goal.currentAmount as string)
     const newAmount = currentAmount + amount
     const isCompleted = newAmount >= parseFloat(goal.targetAmount as string)
 
+    // Atualiza a meta
     await db.update(goals)
       .set({
         currentAmount: newAmount.toString(),
@@ -84,8 +101,25 @@ export async function contributeToGoal(id: string, amount: number) {
       })
       .where(eq(goals.id, id))
 
+    // Debita da conta
+    await db.update(bankAccounts)
+      .set({ balance: (parseFloat(account.balance as string) - amount).toString() })
+      .where(eq(bankAccounts.id, accountId))
+
+    // Registra como transação de despesa para rastreamento
+    await db.insert(transactions).values({
+      userId: session.user.id,
+      accountId,
+      type: 'expense',
+      amount: amount.toString(),
+      description: `Contribuição para meta: ${goal.name}`,
+      date: new Date(),
+    })
+
     revalidatePath('/dashboard/metas')
-    return { success: true }
+    revalidatePath('/dashboard/contas')
+    revalidatePath('/dashboard')
+    return { success: true, isCompleted }
   } catch (error) {
     console.error('Error contributing to goal:', error)
     return { error: 'Erro ao contribuir para meta' }
@@ -97,6 +131,11 @@ export async function deleteGoal(id: string) {
   if (!session?.user?.id) redirect('/login')
 
   try {
+    const existing = await db.query.goals.findFirst({ where: eq(goals.id, id) })
+    if (!existing || existing.userId !== session.user.id) {
+      return { error: 'Meta não encontrada' }
+    }
+
     await db.delete(goals).where(eq(goals.id, id))
     revalidatePath('/dashboard/metas')
     return { success: true }

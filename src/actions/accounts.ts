@@ -45,6 +45,14 @@ export async function updateAccount(id: string, formData: unknown) {
   }
 
   try {
+    // Verifica ownership antes de atualizar
+    const existing = await db.query.bankAccounts.findFirst({
+      where: eq(bankAccounts.id, id),
+    })
+    if (!existing || existing.userId !== session.user.id) {
+      return { error: 'Conta não encontrada' }
+    }
+
     await db.update(bankAccounts)
       .set({
         name: parsed.data.name,
@@ -70,6 +78,14 @@ export async function deleteAccount(id: string) {
   if (!session?.user?.id) redirect('/login')
 
   try {
+    // Verifica ownership
+    const existing = await db.query.bankAccounts.findFirst({
+      where: eq(bankAccounts.id, id),
+    })
+    if (!existing || existing.userId !== session.user.id) {
+      return { error: 'Conta não encontrada' }
+    }
+
     await db.delete(bankAccounts).where(eq(bankAccounts.id, id))
     revalidatePath('/dashboard/contas')
     revalidatePath('/dashboard')

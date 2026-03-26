@@ -7,6 +7,46 @@ import { revalidatePath } from 'next/cache'
 import { transactionSchema } from '@/lib/validations'
 import { redirect } from 'next/navigation'
 
+// ─── Helper: aplica impacto de uma transação no saldo ──────────────
+async function applyBalanceImpact(
+  type: string,
+  accountId: string,
+  toAccountId: string | undefined | null,
+  amount: number,
+  reverse = false
+) {
+  const multiplier = reverse ? -1 : 1
+
+  if (type === 'income') {
+    const account = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, accountId) })
+    if (account) {
+      await db.update(bankAccounts)
+        .set({ balance: (parseFloat(account.balance as string) + multiplier * amount).toString() })
+        .where(eq(bankAccounts.id, accountId))
+    }
+  } else if (type === 'expense') {
+    const account = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, accountId) })
+    if (account) {
+      await db.update(bankAccounts)
+        .set({ balance: (parseFloat(account.balance as string) - multiplier * amount).toString() })
+        .where(eq(bankAccounts.id, accountId))
+    }
+  } else if (type === 'transfer' && toAccountId) {
+    const sourceAccount = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, accountId) })
+    const destAccount = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, toAccountId) })
+
+    if (sourceAccount && destAccount) {
+      await db.update(bankAccounts)
+        .set({ balance: (parseFloat(sourceAccount.balance as string) - multiplier * amount).toString() })
+        .where(eq(bankAccounts.id, accountId))
+
+      await db.update(bankAccounts)
+        .set({ balance: (parseFloat(destAccount.balance as string) + multiplier * amount).toString() })
+        .where(eq(bankAccounts.id, toAccountId))
+    }
+  }
+}
+
 export async function createTransaction(formData: unknown) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
@@ -17,47 +57,12 @@ export async function createTransaction(formData: unknown) {
   }
 
   try {
-    // For transfers, update both accounts
-    if (parsed.data.type === 'transfer' && parsed.data.toAccountId) {
-      // Deduct from source
-      const sourceAccount = await db.query.bankAccounts.findFirst({
-        where: eq(bankAccounts.id, parsed.data.accountId),
-      })
-      // Add to destination
-      const destAccount = await db.query.bankAccounts.findFirst({
-        where: eq(bankAccounts.id, parsed.data.toAccountId),
-      })
-
-      if (sourceAccount && destAccount) {
-        await db.update(bankAccounts)
-          .set({ balance: (parseFloat(sourceAccount.balance as string) - parsed.data.amount).toString() })
-          .where(eq(bankAccounts.id, parsed.data.accountId))
-
-        await db.update(bankAccounts)
-          .set({ balance: (parseFloat(destAccount.balance as string) + parsed.data.amount).toString() })
-          .where(eq(bankAccounts.id, parsed.data.toAccountId))
-      }
-    } else if (parsed.data.type === 'expense') {
-      // Deduct from account
-      const account = await db.query.bankAccounts.findFirst({
-        where: eq(bankAccounts.id, parsed.data.accountId),
-      })
-      if (account) {
-        await db.update(bankAccounts)
-          .set({ balance: (parseFloat(account.balance as string) - parsed.data.amount).toString() })
-          .where(eq(bankAccounts.id, parsed.data.accountId))
-      }
-    } else if (parsed.data.type === 'income') {
-      // Add to account
-      const account = await db.query.bankAccounts.findFirst({
-        where: eq(bankAccounts.id, parsed.data.accountId),
-      })
-      if (account) {
-        await db.update(bankAccounts)
-          .set({ balance: (parseFloat(account.balance as string) + parsed.data.amount).toString() })
-          .where(eq(bankAccounts.id, parsed.data.accountId))
-      }
-    }
+    await applyBalanceImpact(
+      parsed.data.type,
+      parsed.data.accountId,
+      parsed.data.toAccountId,
+      parsed.data.amount
+    )
 
     await db.insert(transactions).values({
       userId: session.user.id,
@@ -80,6 +85,7 @@ export async function createTransaction(formData: unknown) {
   }
 }
 
+// FIX: updateTransaction agora reverte o saldo antigo antes de aplicar o novo
 export async function updateTransaction(id: string, formData: unknown) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
@@ -90,6 +96,33 @@ export async function updateTransaction(id: string, formData: unknown) {
   }
 
   try {
+    // Busca transação atual para reverter o impacto no saldo
+    const existing = await db.query.transactions.findFirst({
+      where: and(eq(transactions.id, id), eq(transactions.userId, session.user.id)),
+    })
+
+    if (!existing) {
+      return { error: 'Transação não encontrada' }
+    }
+
+    // 1. Reverte o impacto da transação antiga
+    await applyBalanceImpact(
+      existing.type,
+      existing.accountId,
+      existing.toAccountId,
+      parseFloat(existing.amount as string),
+      true // reverse = true
+    )
+
+    // 2. Aplica o impacto da transação nova
+    await applyBalanceImpact(
+      parsed.data.type,
+      parsed.data.accountId,
+      parsed.data.toAccountId,
+      parsed.data.amount
+    )
+
+    // 3. Atualiza o registro
     await db.update(transactions)
       .set({
         accountId: parsed.data.accountId,
@@ -105,6 +138,7 @@ export async function updateTransaction(id: string, formData: unknown) {
 
     revalidatePath('/dashboard/transacoes')
     revalidatePath('/dashboard')
+    revalidatePath('/dashboard/contas')
     return { success: true }
   } catch (error) {
     console.error('Error updating transaction:', error)
@@ -117,40 +151,22 @@ export async function deleteTransaction(id: string) {
   if (!session?.user?.id) redirect('/login')
 
   try {
-    // Get transaction to reverse balance
     const transaction = await db.query.transactions.findFirst({
-      where: eq(transactions.id, id),
+      where: and(eq(transactions.id, id), eq(transactions.userId, session.user.id)),
     })
 
-    if (transaction) {
-      const account = await db.query.bankAccounts.findFirst({
-        where: eq(bankAccounts.id, transaction.accountId),
-      })
-
-      if (account) {
-        if (transaction.type === 'income') {
-          await db.update(bankAccounts)
-            .set({ balance: (parseFloat(account.balance as string) - parseFloat(transaction.amount as string)).toString() })
-            .where(eq(bankAccounts.id, transaction.accountId))
-        } else if (transaction.type === 'expense') {
-          await db.update(bankAccounts)
-            .set({ balance: (parseFloat(account.balance as string) + parseFloat(transaction.amount as string)).toString() })
-            .where(eq(bankAccounts.id, transaction.accountId))
-        } else if (transaction.type === 'transfer' && transaction.toAccountId) {
-          const toAccount = await db.query.bankAccounts.findFirst({
-            where: eq(bankAccounts.id, transaction.toAccountId),
-          })
-          if (toAccount) {
-            await db.update(bankAccounts)
-              .set({ balance: (parseFloat(account.balance as string) + parseFloat(transaction.amount as string)).toString() })
-              .where(eq(bankAccounts.id, transaction.accountId))
-            await db.update(bankAccounts)
-              .set({ balance: (parseFloat(toAccount.balance as string) - parseFloat(transaction.amount as string)).toString() })
-              .where(eq(bankAccounts.id, transaction.toAccountId))
-          }
-        }
-      }
+    if (!transaction) {
+      return { error: 'Transação não encontrada' }
     }
+
+    // Reverte o impacto no saldo
+    await applyBalanceImpact(
+      transaction.type,
+      transaction.accountId,
+      transaction.toAccountId,
+      parseFloat(transaction.amount as string),
+      true // reverse = true
+    )
 
     await db.delete(transactions).where(eq(transactions.id, id))
     revalidatePath('/dashboard/transacoes')
@@ -163,7 +179,12 @@ export async function deleteTransaction(id: string) {
   }
 }
 
-export async function getTransactions(filters?: { month?: number; year?: number; accountId?: string }) {
+export async function getTransactions(filters?: {
+  month?: number
+  year?: number
+  accountId?: string
+  type?: string
+}) {
   const session = await auth()
   if (!session?.user?.id) return []
 

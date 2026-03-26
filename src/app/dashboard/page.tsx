@@ -1,11 +1,13 @@
 import { auth } from '@/lib/auth'
-import { db, transactions, bankAccounts, categories } from '@/lib/db'
-import { eq, and, gte, lte, sql } from 'drizzle-orm'
+import { db, transactions, bankAccounts } from '@/lib/db'
+import { eq, and, gte, lte } from 'drizzle-orm'
 import { formatCurrency } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions'
 import { CategoryChart } from '@/components/dashboard/CategoryChart'
 import { BalanceOverview } from '@/components/dashboard/BalanceOverview'
+import { BudgetAlerts } from '@/components/dashboard/BudgetAlerts'
+import { checkBudgetAlerts } from '@/actions/budgets'
 
 export default async function DashboardPage() {
   const session = await auth()
@@ -15,59 +17,71 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
-  // Get all accounts
-  const accounts = await db.query.bankAccounts.findMany({
-    where: eq(bankAccounts.userId, userId),
-  })
+  // Busca em paralelo para melhor performance
+  const [accounts, monthlyTransactions, budgetAlerts] = await Promise.all([
+    db.query.bankAccounts.findMany({
+      where: eq(bankAccounts.userId, userId),
+    }),
+    db.query.transactions.findMany({
+      where: and(
+        eq(transactions.userId, userId),
+        gte(transactions.date, monthStart),
+        lte(transactions.date, monthEnd)
+      ),
+      with: { category: true, account: true },
+      orderBy: (t, { desc }) => [desc(t.date)],
+    }),
+    checkBudgetAlerts(now.getMonth() + 1, now.getFullYear()),
+  ])
 
-  // Get monthly transactions
-  const monthlyTransactions = await db.query.transactions.findMany({
-    where: and(
-      eq(transactions.userId, userId),
-      gte(transactions.date, monthStart),
-      lte(transactions.date, monthEnd)
-    ),
-    with: { category: true, account: true },
-    orderBy: (t, { desc }) => [desc(t.date)],
-  })
-
-  // Calculate totals
-  const totalBalance = accounts.reduce((sum, acc) => {
-    return sum + parseFloat(acc.balance as string)
-  }, 0)
+  const totalBalance = accounts.reduce(
+    (sum, acc) => sum + parseFloat(acc.balance as string),
+    0
+  )
 
   const monthlyIncome = monthlyTransactions
-    .filter(t => t.type === 'income')
+    .filter((t) => t.type === 'income')
     .reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
 
   const monthlyExpense = monthlyTransactions
-    .filter(t => t.type === 'expense')
+    .filter((t) => t.type === 'expense')
     .reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
 
   const expensesByCategory = monthlyTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((acc, t) => {
-      const catName = t.category?.name || 'Sem categoria'
-      const catColor = t.category?.color || '#6B7280'
-      const amount = parseFloat(t.amount as string)
-      if (!acc[catName]) {
-        acc[catName] = { amount: 0, color: catColor }
-      }
-      acc[catName].amount += amount
-      return acc
-    }, {} as Record<string, { amount: number; color: string }>)
+    .filter((t) => t.type === 'expense')
+    .reduce(
+      (acc, t) => {
+        const catName = t.category?.name || 'Sem categoria'
+        const catColor = t.category?.color || '#6B7280'
+        const amount = parseFloat(t.amount as string)
+        if (!acc[catName]) acc[catName] = { amount: 0, color: catColor }
+        acc[catName].amount += amount
+        return acc
+      },
+      {} as Record<string, { amount: number; color: string }>
+    )
+
+  const MONTHS = [
+    'Janeiro','Fevereiro','Março','Abril','Maio','Junho',
+    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+  ]
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-500">
-          Visão geral das suas finanças
+          {MONTHS[now.getMonth()]} {now.getFullYear()} — visão geral das suas finanças
         </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Budget alerts */}
+      {budgetAlerts.length > 0 && (
+        <BudgetAlerts alerts={budgetAlerts} />
+      )}
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-500">Saldo Total</CardTitle>
@@ -85,11 +99,9 @@ export default async function DashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Receitas do Mês</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-green-600">
-              {formatCurrency(monthlyIncome)}
-            </p>
+            <p className="text-2xl font-bold text-green-600">{formatCurrency(monthlyIncome)}</p>
             <p className="text-xs text-gray-500 mt-1">
-              {monthlyTransactions.filter(t => t.type === 'income').length} transações
+              {monthlyTransactions.filter((t) => t.type === 'income').length} transações
             </p>
           </CardContent>
         </Card>
@@ -99,11 +111,9 @@ export default async function DashboardPage() {
             <CardTitle className="text-sm font-medium text-gray-500">Despesas do Mês</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-red-600">
-              {formatCurrency(monthlyExpense)}
-            </p>
+            <p className="text-2xl font-bold text-red-600">{formatCurrency(monthlyExpense)}</p>
             <p className="text-xs text-gray-500 mt-1">
-              {monthlyTransactions.filter(t => t.type === 'expense').length} transações
+              {monthlyTransactions.filter((t) => t.type === 'expense').length} transações
             </p>
           </CardContent>
         </Card>
@@ -130,7 +140,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Transactions */}
+      {/* Recent transactions */}
       <Card>
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
