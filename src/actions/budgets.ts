@@ -80,11 +80,11 @@ export async function getBudgets(month: number, year: number) {
   })
 }
 
-// Retorna orçamentos com o valor gasto real no período
 export async function getBudgetsWithSpent(month: number, year: number) {
   const session = await auth()
   if (!session?.user?.id) return []
 
+  const userId = session.user.id
   const budgetList = await getBudgets(month, year)
   const start = new Date(year, month - 1, 1)
   const end = new Date(year, month, 0, 23, 59, 59)
@@ -96,7 +96,7 @@ export async function getBudgetsWithSpent(month: number, year: number) {
         .from(transactions)
         .where(
           and(
-            eq(transactions.userId, session.user.id!),
+            eq(transactions.userId, userId),
             eq(transactions.categoryId, budget.categoryId),
             eq(transactions.type, 'expense'),
             gte(transactions.date, start),
