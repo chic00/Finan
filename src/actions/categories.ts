@@ -79,16 +79,16 @@ export async function getCategories() {
   const session = await auth()
   if (!session?.user?.id) return []
 
-  const userCategories = await db.query.categories.findMany({
-    where: eq(categories.userId, session.user.id),
+  // Busca categorias do sistema + categorias do próprio usuário
+  // usando OR para evitar duplicatas
+  const allCategories = await db.query.categories.findMany({
+    orderBy: (c, { asc }) => [asc(c.name)],
   })
 
-  // Get system categories
-  const systemCategories = await db.query.categories.findMany({
-    where: eq(categories.isSystem, true),
-  })
-
-  return [...systemCategories, ...userCategories]
+  // Filtra: categorias de sistema (userId null) + categorias do usuário logado
+  return allCategories.filter(
+    (c) => c.isSystem === true || c.userId === session.user!.id
+  )
 }
 
 export async function initDefaultCategories(userId: string) {
