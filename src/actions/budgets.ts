@@ -12,9 +12,7 @@ export async function createOrUpdateBudget(formData: unknown) {
   if (!session?.user?.id) redirect('/login')
 
   const parsed = budgetSchema.safeParse(formData)
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0].message }
-  }
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   try {
     const existing = await db.query.budgets.findFirst({
@@ -48,15 +46,38 @@ export async function createOrUpdateBudget(formData: unknown) {
   }
 }
 
+// ✅ NOVA ACTION: editar orçamento por ID (atualiza apenas o valor)
+export async function updateBudget(id: string, amount: number) {
+  const session = await auth()
+  if (!session?.user?.id) redirect('/login')
+
+  try {
+    const existing = await db.query.budgets.findFirst({
+      where: and(eq(budgets.id, id), eq(budgets.userId, session.user.id)),
+    })
+    if (!existing) return { error: 'Orçamento não encontrado' }
+
+    await db.update(budgets)
+      .set({ amount: amount.toString() })
+      .where(eq(budgets.id, id))
+
+    revalidatePath('/dashboard/orcamentos')
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating budget:', error)
+    return { error: 'Erro ao atualizar orçamento' }
+  }
+}
+
 export async function deleteBudget(id: string) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
 
   try {
-    const existing = await db.query.budgets.findFirst({ where: eq(budgets.id, id) })
-    if (!existing || existing.userId !== session.user.id) {
-      return { error: 'Orçamento não encontrado' }
-    }
+    const existing = await db.query.budgets.findFirst({
+      where: and(eq(budgets.id, id), eq(budgets.userId, session.user.id)),
+    })
+    if (!existing) return { error: 'Orçamento não encontrado' }
     await db.delete(budgets).where(eq(budgets.id, id))
     revalidatePath('/dashboard/orcamentos')
     return { success: true }
@@ -87,7 +108,7 @@ export async function getBudgetsWithSpent(month: number, year: number) {
   const userId = session.user.id
   const budgetList = await getBudgets(month, year)
   const start = new Date(year, month - 1, 1)
-  const end = new Date(year, month, 0, 23, 59, 59)
+  const end   = new Date(year, month, 0, 23, 59, 59)
 
   const result = await Promise.all(
     budgetList.map(async (budget) => {
@@ -104,19 +125,16 @@ export async function getBudgetsWithSpent(month: number, year: number) {
           )
         )
 
-      const spent = spentResult.reduce(
-        (sum, t) => sum + parseFloat(t.total as string),
-        0
-      )
+      const spent       = spentResult.reduce((sum, t) => sum + parseFloat(t.total as string), 0)
       const budgetAmount = parseFloat(budget.amount as string)
-      const percent = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0
+      const percent      = budgetAmount > 0 ? Math.round((spent / budgetAmount) * 100) : 0
 
       return {
         ...budget,
         spent,
         percent,
         isOverBudget: spent > budgetAmount,
-        isNearLimit: percent >= 80 && spent <= budgetAmount,
+        isNearLimit:  percent >= 80 && spent <= budgetAmount,
       }
     })
   )
@@ -126,14 +144,13 @@ export async function getBudgetsWithSpent(month: number, year: number) {
 
 export async function checkBudgetAlerts(month: number, year: number) {
   const budgetsWithSpent = await getBudgetsWithSpent(month, year)
-
   return budgetsWithSpent
     .filter((b) => b.percent >= 80)
     .map((b) => ({
-      category: b.category.name,
-      budget: parseFloat(b.amount as string),
-      spent: b.spent,
-      percent: b.percent,
+      category:    b.category.name,
+      budget:      parseFloat(b.amount as string),
+      spent:       b.spent,
+      percent:     b.percent,
       isOverBudget: b.isOverBudget,
     }))
 }

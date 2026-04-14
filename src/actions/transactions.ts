@@ -2,49 +2,44 @@
 
 import { auth } from '@/lib/auth'
 import { db, transactions, bankAccounts } from '@/lib/db'
-import { eq, and, gte, lte, desc } from 'drizzle-orm'
+import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { transactionSchema } from '@/lib/validations'
 import { redirect } from 'next/navigation'
 
-// ─── Helper: aplica impacto de uma transação no saldo ──────────────
-async function applyBalanceImpact(
+// ─── Helper: atualiza saldo de forma atômica (sem race condition) ──
+// Usa SQL direto para fazer balance = balance +/- amount em uma única operação
+async function adjustBalance(accountId: string, delta: number) {
+  await db
+    .update(bankAccounts)
+    .set({
+      balance: sql`${bankAccounts.balance} + ${delta.toString()}`,
+      updatedAt: new Date(),
+    })
+    .where(eq(bankAccounts.id, accountId))
+}
+
+// ─── Helper: calcula o delta de saldo para cada tipo de transação ──
+function getBalanceDeltas(
   type: string,
   accountId: string,
   toAccountId: string | undefined | null,
   amount: number,
   reverse = false
-) {
-  const multiplier = reverse ? -1 : 1
+): Array<{ accountId: string; delta: number }> {
+  const sign = reverse ? -1 : 1
+  const deltas: Array<{ accountId: string; delta: number }> = []
 
   if (type === 'income') {
-    const account = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, accountId) })
-    if (account) {
-      await db.update(bankAccounts)
-        .set({ balance: (parseFloat(account.balance as string) + multiplier * amount).toString() })
-        .where(eq(bankAccounts.id, accountId))
-    }
+    deltas.push({ accountId, delta: sign * amount })
   } else if (type === 'expense') {
-    const account = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, accountId) })
-    if (account) {
-      await db.update(bankAccounts)
-        .set({ balance: (parseFloat(account.balance as string) - multiplier * amount).toString() })
-        .where(eq(bankAccounts.id, accountId))
-    }
+    deltas.push({ accountId, delta: -sign * amount })
   } else if (type === 'transfer' && toAccountId) {
-    const sourceAccount = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, accountId) })
-    const destAccount = await db.query.bankAccounts.findFirst({ where: eq(bankAccounts.id, toAccountId) })
-
-    if (sourceAccount && destAccount) {
-      await db.update(bankAccounts)
-        .set({ balance: (parseFloat(sourceAccount.balance as string) - multiplier * amount).toString() })
-        .where(eq(bankAccounts.id, accountId))
-
-      await db.update(bankAccounts)
-        .set({ balance: (parseFloat(destAccount.balance as string) + multiplier * amount).toString() })
-        .where(eq(bankAccounts.id, toAccountId))
-    }
+    deltas.push({ accountId, delta: -sign * amount })
+    deltas.push({ accountId: toAccountId, delta: sign * amount })
   }
+
+  return deltas
 }
 
 export async function createTransaction(formData: unknown) {
@@ -57,22 +52,35 @@ export async function createTransaction(formData: unknown) {
   }
 
   try {
-    await applyBalanceImpact(
+    const deltas = getBalanceDeltas(
       parsed.data.type,
       parsed.data.accountId,
       parsed.data.toAccountId,
       parsed.data.amount
     )
 
-    await db.insert(transactions).values({
-      userId: session.user.id,
-      accountId: parsed.data.accountId,
-      toAccountId: parsed.data.toAccountId,
-      categoryId: parsed.data.categoryId,
-      type: parsed.data.type,
-      amount: parsed.data.amount.toString(),
-      description: parsed.data.description,
-      date: parsed.data.date,
+    // Aplica todos os deltas e insere a transação atomicamente
+    await db.transaction(async (tx) => {
+      for (const { accountId, delta } of deltas) {
+        await tx
+          .update(bankAccounts)
+          .set({
+            balance: sql`${bankAccounts.balance} + ${delta.toString()}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(bankAccounts.id, accountId))
+      }
+
+      await tx.insert(transactions).values({
+        userId: session.user.id!,
+        accountId: parsed.data.accountId,
+        toAccountId: parsed.data.toAccountId,
+        categoryId: parsed.data.categoryId,
+        type: parsed.data.type,
+        amount: parsed.data.amount.toString(),
+        description: parsed.data.description,
+        date: parsed.data.date,
+      })
     })
 
     revalidatePath('/dashboard/transacoes')
@@ -85,7 +93,7 @@ export async function createTransaction(formData: unknown) {
   }
 }
 
-// FIX: updateTransaction agora reverte o saldo antigo antes de aplicar o novo
+// FIX: reverte saldo antigo e aplica novo de forma atômica
 export async function updateTransaction(id: string, formData: unknown) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
@@ -96,45 +104,70 @@ export async function updateTransaction(id: string, formData: unknown) {
   }
 
   try {
-    // Busca transação atual para reverter o impacto no saldo
     const existing = await db.query.transactions.findFirst({
-      where: and(eq(transactions.id, id), eq(transactions.userId, session.user.id)),
+      where: and(
+        eq(transactions.id, id),
+        eq(transactions.userId, session.user.id)
+      ),
     })
 
     if (!existing) {
       return { error: 'Transação não encontrada' }
     }
 
-    // 1. Reverte o impacto da transação antiga
-    await applyBalanceImpact(
+    // Calcula deltas: reverter antiga + aplicar nova
+    const reverseDeltas = getBalanceDeltas(
       existing.type,
       existing.accountId,
       existing.toAccountId,
       parseFloat(existing.amount as string),
-      true // reverse = true
+      true // reverse
     )
-
-    // 2. Aplica o impacto da transação nova
-    await applyBalanceImpact(
+    const newDeltas = getBalanceDeltas(
       parsed.data.type,
       parsed.data.accountId,
       parsed.data.toAccountId,
       parsed.data.amount
     )
 
-    // 3. Atualiza o registro
-    await db.update(transactions)
-      .set({
-        accountId: parsed.data.accountId,
-        toAccountId: parsed.data.toAccountId,
-        categoryId: parsed.data.categoryId,
-        type: parsed.data.type,
-        amount: parsed.data.amount.toString(),
-        description: parsed.data.description,
-        date: parsed.data.date,
-        updatedAt: new Date(),
-      })
-      .where(eq(transactions.id, id))
+    await db.transaction(async (tx) => {
+      // 1. Reverte impacto da transação antiga
+      for (const { accountId, delta } of reverseDeltas) {
+        await tx
+          .update(bankAccounts)
+          .set({
+            balance: sql`${bankAccounts.balance} + ${delta.toString()}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(bankAccounts.id, accountId))
+      }
+
+      // 2. Aplica impacto da nova transação
+      for (const { accountId, delta } of newDeltas) {
+        await tx
+          .update(bankAccounts)
+          .set({
+            balance: sql`${bankAccounts.balance} + ${delta.toString()}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(bankAccounts.id, accountId))
+      }
+
+      // 3. Atualiza o registro
+      await tx
+        .update(transactions)
+        .set({
+          accountId: parsed.data.accountId,
+          toAccountId: parsed.data.toAccountId,
+          categoryId: parsed.data.categoryId,
+          type: parsed.data.type,
+          amount: parsed.data.amount.toString(),
+          description: parsed.data.description,
+          date: parsed.data.date,
+          updatedAt: new Date(),
+        })
+        .where(eq(transactions.id, id))
+    })
 
     revalidatePath('/dashboard/transacoes')
     revalidatePath('/dashboard')
@@ -152,23 +185,38 @@ export async function deleteTransaction(id: string) {
 
   try {
     const transaction = await db.query.transactions.findFirst({
-      where: and(eq(transactions.id, id), eq(transactions.userId, session.user.id)),
+      where: and(
+        eq(transactions.id, id),
+        eq(transactions.userId, session.user.id)
+      ),
     })
 
     if (!transaction) {
       return { error: 'Transação não encontrada' }
     }
 
-    // Reverte o impacto no saldo
-    await applyBalanceImpact(
+    const reverseDeltas = getBalanceDeltas(
       transaction.type,
       transaction.accountId,
       transaction.toAccountId,
       parseFloat(transaction.amount as string),
-      true // reverse = true
+      true // reverse
     )
 
-    await db.delete(transactions).where(eq(transactions.id, id))
+    await db.transaction(async (tx) => {
+      for (const { accountId, delta } of reverseDeltas) {
+        await tx
+          .update(bankAccounts)
+          .set({
+            balance: sql`${bankAccounts.balance} + ${delta.toString()}`,
+            updatedAt: new Date(),
+          })
+          .where(eq(bankAccounts.id, accountId))
+      }
+
+      await tx.delete(transactions).where(eq(transactions.id, id))
+    })
+
     revalidatePath('/dashboard/transacoes')
     revalidatePath('/dashboard')
     revalidatePath('/dashboard/contas')

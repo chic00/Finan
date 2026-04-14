@@ -28,9 +28,7 @@ export async function createCategory(formData: unknown) {
   if (!session?.user?.id) redirect('/login')
 
   const parsed = categorySchema.safeParse(formData)
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0].message }
-  }
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   try {
     await db.insert(categories).values({
@@ -40,12 +38,44 @@ export async function createCategory(formData: unknown) {
       color: parsed.data.color,
       icon: parsed.data.icon,
     })
-
     revalidatePath('/dashboard/categorias')
     return { success: true }
   } catch (error) {
     console.error('Error creating category:', error)
     return { error: 'Erro ao criar categoria' }
+  }
+}
+
+// ✅ NOVA ACTION: editar categoria
+export async function updateCategory(id: string, formData: unknown) {
+  const session = await auth()
+  if (!session?.user?.id) redirect('/login')
+
+  const parsed = categorySchema.safeParse(formData)
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
+
+  try {
+    const existing = await db.query.categories.findFirst({
+      where: and(eq(categories.id, id), eq(categories.userId, session.user.id)),
+    })
+
+    if (!existing) return { error: 'Categoria não encontrada' }
+    if (existing.isSystem) return { error: 'Não é possível editar categorias do sistema' }
+
+    await db.update(categories)
+      .set({
+        name: parsed.data.name,
+        type: parsed.data.type,
+        color: parsed.data.color,
+        icon: parsed.data.icon,
+      })
+      .where(eq(categories.id, id))
+
+    revalidatePath('/dashboard/categorias')
+    return { success: true }
+  } catch (error) {
+    console.error('Error updating category:', error)
+    return { error: 'Erro ao atualizar categoria' }
   }
 }
 
@@ -58,13 +88,8 @@ export async function deleteCategory(id: string) {
       where: and(eq(categories.id, id), eq(categories.userId, session.user.id)),
     })
 
-    if (!category) {
-      return { error: 'Categoria não encontrada' }
-    }
-
-    if (category.isSystem) {
-      return { error: 'Não é possível excluir categorias do sistema' }
-    }
+    if (!category) return { error: 'Categoria não encontrada' }
+    if (category.isSystem) return { error: 'Não é possível excluir categorias do sistema' }
 
     await db.delete(categories).where(eq(categories.id, id))
     revalidatePath('/dashboard/categorias')
@@ -79,13 +104,10 @@ export async function getCategories() {
   const session = await auth()
   if (!session?.user?.id) return []
 
-  // Busca categorias do sistema + categorias do próprio usuário
-  // usando OR para evitar duplicatas
   const allCategories = await db.query.categories.findMany({
     orderBy: (c, { asc }) => [asc(c.name)],
   })
 
-  // Filtra: categorias de sistema (userId null) + categorias do usuário logado
   return allCategories.filter(
     (c) => c.isSystem === true || c.userId === session.user!.id
   )
@@ -98,7 +120,7 @@ export async function initDefaultCategories(userId: string) {
 
   if (!existing) {
     await db.insert(categories).values(
-      defaultCategories.map(cat => ({ ...cat, userId }))
+      defaultCategories.map((cat) => ({ ...cat, userId }))
     )
   }
 }
