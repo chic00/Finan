@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth'
-import { db, transactions, bankAccounts } from '@/lib/db'
+import { db, transactions, bankAccounts, recurringTransactions } from '@/lib/db'
 import { eq, and, gte, lte } from 'drizzle-orm'
 import { formatCurrency } from '@/lib/utils'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -7,18 +7,19 @@ import { RecentTransactions } from '@/components/dashboard/RecentTransactions'
 import { CategoryChart } from '@/components/dashboard/CategoryChart'
 import { BalanceOverview } from '@/components/dashboard/BalanceOverview'
 import { BudgetAlerts } from '@/components/dashboard/BudgetAlerts'
+import { RecurringAlert } from '@/components/dashboard/RecurringAlert'
 import { checkBudgetAlerts } from '@/actions/budgets'
 
 export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user!.id!
 
-  const now = new Date()
+  const now        = new Date()
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+  const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
-  // Busca em paralelo para melhor performance
-  const [accounts, monthlyTransactions, budgetAlerts] = await Promise.all([
+  // ── Busca em paralelo ─────────────────────────────────────────────
+  const [accounts, monthlyTransactions, budgetAlerts, recurringThisMonth] = await Promise.all([
     db.query.bankAccounts.findMany({
       where: eq(bankAccounts.userId, userId),
     }),
@@ -32,11 +33,30 @@ export default async function DashboardPage() {
       orderBy: (t, { desc }) => [desc(t.date)],
     }),
     checkBudgetAlerts(now.getMonth() + 1, now.getFullYear()),
+
+    // ✅ Recorrentes ativas com vencimento neste mês ou já vencidas e não pagas
+    db.query.recurringTransactions.findMany({
+      where: and(
+        eq(recurringTransactions.userId, userId),
+        eq(recurringTransactions.isActive, true),
+      ),
+      with: { category: true, account: true },
+      orderBy: (r, { asc }) => [asc(r.nextDueDate)],
+    }),
   ])
 
+  // ── Filtra recorrentes relevantes para o mês atual ────────────────
+  // Inclui: vencimentos neste mês + pendentes vencidos de meses anteriores
+  const relevantRecurring = recurringThisMonth.filter((r) => {
+    const due = new Date(r.nextDueDate)
+    const isThisMonth = due >= monthStart && due <= monthEnd
+    const isOverdueUnpaid = due < monthStart && !r.isPaid
+    return isThisMonth || isOverdueUnpaid
+  })
+
+  // ── KPIs ─────────────────────────────────────────────────────────
   const totalBalance = accounts.reduce(
-    (sum, acc) => sum + parseFloat(acc.balance as string),
-    0
+    (sum, acc) => sum + parseFloat(acc.balance as string), 0
   )
 
   const monthlyIncome = monthlyTransactions
@@ -51,11 +71,10 @@ export default async function DashboardPage() {
     .filter((t) => t.type === 'expense')
     .reduce(
       (acc, t) => {
-        const catName = t.category?.name || 'Sem categoria'
+        const catName  = t.category?.name  || 'Sem categoria'
         const catColor = t.category?.color || '#6B7280'
-        const amount = parseFloat(t.amount as string)
         if (!acc[catName]) acc[catName] = { amount: 0, color: catColor }
-        acc[catName].amount += amount
+        acc[catName].amount += parseFloat(t.amount as string)
         return acc
       },
       {} as Record<string, { amount: number; color: string }>
@@ -75,7 +94,7 @@ export default async function DashboardPage() {
         </p>
       </div>
 
-      {/* Budget alerts */}
+      {/* Alertas de orçamento */}
       {budgetAlerts.length > 0 && (
         <BudgetAlerts alerts={budgetAlerts} />
       )}
@@ -119,7 +138,12 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Charts */}
+      {/* ✅ NOVO: Bloco de contas recorrentes do mês */}
+      {relevantRecurring.length > 0 && (
+        <RecurringAlert items={relevantRecurring} />
+      )}
+
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -140,7 +164,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent transactions */}
+      {/* Transações recentes */}
       <Card>
         <CardHeader>
           <CardTitle>Transações Recentes</CardTitle>
