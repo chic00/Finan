@@ -125,7 +125,7 @@ export async function contributeToGoal(
 
       // 3. Registra a despesa para rastreamento
       await tx.insert(transactions).values({
-        userId: session.user.id!,
+        userId: session.user!.id!,
         accountId,
         type: 'expense',
         amount: amount.toString(),
