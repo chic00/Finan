@@ -17,7 +17,7 @@ export async function createOrUpdateBudget(formData: unknown) {
   try {
     const existing = await db.query.budgets.findFirst({
       where: and(
-        eq(budgets.userId, session.user.id),
+        eq(budgets.userId, session.user!.id),
         eq(budgets.categoryId, parsed.data.categoryId),
         eq(budgets.month, parsed.data.month),
         eq(budgets.year, parsed.data.year)
@@ -30,7 +30,7 @@ export async function createOrUpdateBudget(formData: unknown) {
         .where(eq(budgets.id, existing.id))
     } else {
       await db.insert(budgets).values({
-        userId: session.user.id,
+        userId: session.user!.id,
         categoryId: parsed.data.categoryId,
         amount: parsed.data.amount.toString(),
         month: parsed.data.month,
@@ -53,7 +53,7 @@ export async function updateBudget(id: string, amount: number) {
 
   try {
     const existing = await db.query.budgets.findFirst({
-      where: and(eq(budgets.id, id), eq(budgets.userId, session.user.id)),
+      where: and(eq(budgets.id, id), eq(budgets.userId, session.user!.id)),
     })
     if (!existing) return { error: 'Orçamento não encontrado' }
 
@@ -75,7 +75,7 @@ export async function deleteBudget(id: string) {
 
   try {
     const existing = await db.query.budgets.findFirst({
-      where: and(eq(budgets.id, id), eq(budgets.userId, session.user.id)),
+      where: and(eq(budgets.id, id), eq(budgets.userId, session.user!.id)),
     })
     if (!existing) return { error: 'Orçamento não encontrado' }
     await db.delete(budgets).where(eq(budgets.id, id))
@@ -93,7 +93,7 @@ export async function getBudgets(month: number, year: number) {
 
   return db.query.budgets.findMany({
     where: and(
-      eq(budgets.userId, session.user.id),
+      eq(budgets.userId, session.user!.id),
       eq(budgets.month, month),
       eq(budgets.year, year)
     ),
@@ -105,7 +105,7 @@ export async function getBudgetsWithSpent(month: number, year: number) {
   const session = await auth()
   if (!session?.user?.id) return []
 
-  const userId = session.user.id
+  const userId = session.user!.id
   const budgetList = await getBudgets(month, year)
   const start = new Date(year, month - 1, 1)
   const end   = new Date(year, month, 0, 23, 59, 59)

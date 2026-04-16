@@ -18,7 +18,7 @@ export async function createGoal(formData: unknown) {
 
   try {
     await db.insert(goals).values({
-      userId: session.user.id,
+      userId: session.user!.id,
       name: parsed.data.name,
       targetAmount: parsed.data.targetAmount.toString(),
       deadline: parsed.data.deadline,
@@ -45,7 +45,7 @@ export async function updateGoal(id: string, formData: unknown) {
     const existing = await db.query.goals.findFirst({
       where: eq(goals.id, id),
     })
-    if (!existing || existing.userId !== session.user.id) {
+    if (!existing || existing.userId !== session.user!.id) {
       return { error: 'Meta não encontrada' }
     }
 
@@ -80,7 +80,7 @@ export async function contributeToGoal(
     const goal = await db.query.goals.findFirst({
       where: eq(goals.id, id),
     })
-    if (!goal || goal.userId !== session.user.id) {
+    if (!goal || goal.userId !== session.user!.id) {
       return { error: 'Meta não encontrada' }
     }
     if (goal.isCompleted) {
@@ -90,7 +90,7 @@ export async function contributeToGoal(
     const account = await db.query.bankAccounts.findFirst({
       where: eq(bankAccounts.id, accountId),
     })
-    if (!account || account.userId !== session.user.id) {
+    if (!account || account.userId !== session.user!.id) {
       return { error: 'Conta não encontrada' }
     }
     if (parseFloat(account.balance as string) < amount) {
@@ -152,7 +152,7 @@ export async function deleteGoal(id: string) {
     const existing = await db.query.goals.findFirst({
       where: eq(goals.id, id),
     })
-    if (!existing || existing.userId !== session.user.id) {
+    if (!existing || existing.userId !== session.user!.id) {
       return { error: 'Meta não encontrada' }
     }
 
@@ -170,7 +170,7 @@ export async function getGoals() {
   if (!session?.user?.id) return []
 
   return db.query.goals.findMany({
-    where: eq(goals.userId, session.user.id),
+    where: eq(goals.userId, session.user!.id),
     orderBy: [desc(goals.createdAt)],
   })
 }

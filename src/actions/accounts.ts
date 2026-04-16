@@ -18,7 +18,7 @@ export async function createAccount(formData: unknown) {
 
   try {
     await db.insert(bankAccounts).values({
-      userId: session.user.id,
+      userId: session.user!.id,
       name: parsed.data.name,
       type: parsed.data.type,
       balance: parsed.data.balance.toString(),
@@ -49,7 +49,7 @@ export async function updateAccount(id: string, formData: unknown) {
     const existing = await db.query.bankAccounts.findFirst({
       where: eq(bankAccounts.id, id),
     })
-    if (!existing || existing.userId !== session.user.id) {
+    if (!existing || existing.userId !== session.user!.id) {
       return { error: 'Conta não encontrada' }
     }
 
@@ -82,7 +82,7 @@ export async function deleteAccount(id: string) {
     const existing = await db.query.bankAccounts.findFirst({
       where: eq(bankAccounts.id, id),
     })
-    if (!existing || existing.userId !== session.user.id) {
+    if (!existing || existing.userId !== session.user!.id) {
       return { error: 'Conta não encontrada' }
     }
 
@@ -101,7 +101,7 @@ export async function getAccounts() {
   if (!session?.user?.id) return []
 
   return db.query.bankAccounts.findMany({
-    where: eq(bankAccounts.userId, session.user.id),
+    where: eq(bankAccounts.userId, session.user!.id),
     orderBy: (a, { desc }) => [desc(a.createdAt)],
   })
 }

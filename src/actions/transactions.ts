@@ -72,7 +72,7 @@ export async function createTransaction(formData: unknown) {
       }
 
       await tx.insert(transactions).values({
-        userId: session.user.id!,
+        userId: session.user!.id!,
         accountId: parsed.data.accountId,
         toAccountId: parsed.data.toAccountId,
         categoryId: parsed.data.categoryId,
@@ -107,7 +107,7 @@ export async function updateTransaction(id: string, formData: unknown) {
     const existing = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, id),
-        eq(transactions.userId, session.user.id)
+        eq(transactions.userId, session.user!.id)
       ),
     })
 
@@ -187,7 +187,7 @@ export async function deleteTransaction(id: string) {
     const transaction = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, id),
-        eq(transactions.userId, session.user.id)
+        eq(transactions.userId, session.user!.id)
       ),
     })
 
@@ -236,7 +236,7 @@ export async function getTransactions(filters?: {
   const session = await auth()
   if (!session?.user?.id) return []
 
-  const conditions = [eq(transactions.userId, session.user.id)]
+  const conditions = [eq(transactions.userId, session.user!.id)]
 
   if (filters?.month !== undefined && filters?.year !== undefined) {
     const start = new Date(filters.year, filters.month, 1)

@@ -41,7 +41,7 @@ export async function togglePaid(id: string) {
   const recurring = await db.query.recurringTransactions.findFirst({
     where: and(
       eq(recurringTransactions.id, id),
-      eq(recurringTransactions.userId, session.user.id)
+      eq(recurringTransactions.userId, session.user!.id)
     ),
   })
 
@@ -54,7 +54,7 @@ export async function togglePaid(id: string) {
     if (recurring.paidAt) {
       const existingTx = await db.query.transactions.findFirst({
         where: and(
-          eq(transactions.userId, session.user.id),
+          eq(transactions.userId, session.user!.id),
           eq(transactions.recurringId, id),
           eq(transactions.isRecurring, true),
         ),
@@ -129,7 +129,7 @@ export async function togglePaid(id: string) {
 
   // Insere transação
   await db.insert(transactions).values({
-    userId:      session.user.id,
+    userId:      session.user!.id,
     accountId:   recurring.accountId,
     categoryId:  recurring.categoryId,
     type:        recurring.type,
@@ -187,7 +187,7 @@ export async function createRecurringTransaction(formData: unknown) {
     const nextDueDate = calculateNextDueDate(parsed.data.startDate, parsed.data.frequency)
 
     await db.insert(recurringTransactions).values({
-      userId:      session.user.id,
+      userId:      session.user!.id,
       accountId:   parsed.data.accountId,
       categoryId:  parsed.data.categoryId,
       type:        parsed.data.type,
@@ -221,7 +221,7 @@ export async function updateRecurringTransaction(id: string, formData: unknown) 
     const existing = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, id),
-        eq(recurringTransactions.userId, session.user.id)
+        eq(recurringTransactions.userId, session.user!.id)
       ),
     })
     if (!existing) return { error: 'Recorrência não encontrada' }
@@ -261,7 +261,7 @@ export async function toggleRecurringTransaction(id: string) {
     const existing = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, id),
-        eq(recurringTransactions.userId, session.user.id)
+        eq(recurringTransactions.userId, session.user!.id)
       ),
     })
     if (!existing) return { error: 'Recorrência não encontrada' }
@@ -285,7 +285,7 @@ export async function deleteRecurringTransaction(id: string) {
     const existing = await db.query.recurringTransactions.findFirst({
       where: and(
         eq(recurringTransactions.id, id),
-        eq(recurringTransactions.userId, session.user.id)
+        eq(recurringTransactions.userId, session.user!.id)
       ),
     })
     if (!existing) return { error: 'Recorrência não encontrada' }
@@ -303,7 +303,7 @@ export async function getRecurringTransactions() {
   if (!session?.user?.id) return []
 
   return db.query.recurringTransactions.findMany({
-    where: eq(recurringTransactions.userId, session.user.id),
+    where: eq(recurringTransactions.userId, session.user!.id),
     with: { account: true, category: true },
     orderBy: (r, { asc }) => [asc(r.nextDueDate)],
   })

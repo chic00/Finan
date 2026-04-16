@@ -30,7 +30,7 @@ export async function saveNotificationSettings(formData: unknown) {
 
   try {
     const existing = await db.query.userNotificationSettings.findFirst({
-      where: eq(userNotificationSettings.userId, session.user.id),
+      where: eq(userNotificationSettings.userId, session.user!.id),
     })
 
     const values = {
@@ -46,10 +46,10 @@ export async function saveNotificationSettings(formData: unknown) {
       await db
         .update(userNotificationSettings)
         .set(values)
-        .where(eq(userNotificationSettings.userId, session.user.id))
+        .where(eq(userNotificationSettings.userId, session.user!.id))
     } else {
       await db.insert(userNotificationSettings).values({
-        userId: session.user.id,
+        userId: session.user!.id,
         ...values,
       })
     }
@@ -67,7 +67,7 @@ export async function getNotificationSettings() {
   if (!session?.user?.id) return null
 
   return db.query.userNotificationSettings.findFirst({
-    where: eq(userNotificationSettings.userId, session.user.id),
+    where: eq(userNotificationSettings.userId, session.user!.id),
   })
 }
 

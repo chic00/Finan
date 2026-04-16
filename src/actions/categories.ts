@@ -32,7 +32,7 @@ export async function createCategory(formData: unknown) {
 
   try {
     await db.insert(categories).values({
-      userId: session.user.id,
+      userId: session.user!.id,
       name: parsed.data.name,
       type: parsed.data.type,
       color: parsed.data.color,
@@ -56,7 +56,7 @@ export async function updateCategory(id: string, formData: unknown) {
 
   try {
     const existing = await db.query.categories.findFirst({
-      where: and(eq(categories.id, id), eq(categories.userId, session.user.id)),
+      where: and(eq(categories.id, id), eq(categories.userId, session.user!.id)),
     })
 
     if (!existing) return { error: 'Categoria não encontrada' }
@@ -85,7 +85,7 @@ export async function deleteCategory(id: string) {
 
   try {
     const category = await db.query.categories.findFirst({
-      where: and(eq(categories.id, id), eq(categories.userId, session.user.id)),
+      where: and(eq(categories.id, id), eq(categories.userId, session.user!.id)),
     })
 
     if (!category) return { error: 'Categoria não encontrada' }
