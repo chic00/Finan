@@ -8,7 +8,7 @@ export default async function ConfiguracoesPage() {
 
   return (
     <NotificationSettingsClient
-      settings={settings}
+      settings={settings ?? null}
       userEmail={session?.user?.email || ''}
     />
   )
