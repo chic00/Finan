@@ -4,9 +4,10 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
+import Image from 'next/image'
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, Tags,
-  PiggyBank, Target, BarChart3, LogOut, TrendingUp,
+  PiggyBank, Target, BarChart3, LogOut,
   Menu, X, RefreshCw, Bell,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,12 +39,15 @@ function NavContent({
 
   return (
     <>
-      <div className="p-6 border-b border-border">
-        <Link href="/dashboard" className="flex items-center gap-3" onClick={onLinkClick}>
-          <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-            <TrendingUp className="text-primary-foreground" size={18} />
-          </div>
-          <span className="text-xl font-bold text-foreground">Finan</span>
+      <div className="p-5 border-b border-border">
+        <Link href="/dashboard" className="flex items-center" onClick={onLinkClick}>
+          <Image 
+            src="/logo.jpeg" 
+            alt="Fyneo" 
+            width={140} 
+            height={48} 
+            className="h-10 w-auto"
+          />
         </Link>
       </div>
 
@@ -114,11 +118,14 @@ export function Sidebar({ user }: SidebarProps) {
         >
           <Menu size={22} className="text-foreground" />
         </button>
-        <Link href="/dashboard" className="flex items-center gap-2.5 ml-3">
-          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-            <TrendingUp className="text-primary-foreground" size={16} />
-          </div>
-          <span className="text-lg font-bold text-foreground">Finan</span>
+        <Link href="/dashboard" className="flex items-center ml-3">
+          <Image 
+            src="/logo.jpeg" 
+            alt="Fyneo" 
+            width={100} 
+            height={32} 
+            className="h-8 w-auto"
+          />
         </Link>
       </div>
 

@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
-import { Eye, EyeOff, Loader2, TrendingUp, Shield, Zap, BarChart3 } from 'lucide-react'
+import Image from 'next/image'
+import { Eye, EyeOff, Loader2, Shield, Zap, BarChart3 } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -50,22 +51,25 @@ export default function LoginPage() {
 
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div>
-            <Link href="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <TrendingUp className="text-primary-foreground" size={22} />
-              </div>
-              <span className="text-2xl font-bold text-foreground">Finan</span>
+            <Link href="/" className="flex items-center">
+              <Image 
+                src="/logo.jpeg" 
+                alt="Fyneo" 
+                width={180} 
+                height={60} 
+                className="h-14 w-auto"
+              />
             </Link>
           </div>
 
           <div className="space-y-8">
             <div>
               <h1 className="text-4xl font-bold text-foreground leading-tight text-balance">
-                Controle financeiro
-                <span className="text-gradient block">inteligente</span>
+                Organize hoje,
+                <span className="text-gradient block">cresca amanha</span>
               </h1>
               <p className="mt-4 text-muted-foreground text-lg max-w-md leading-relaxed">
-                Tome decisoes financeiras mais inteligentes com uma plataforma completa para gestao do seu dinheiro.
+                Fyneo e a plataforma completa para gestao das suas financas pessoais. Tome decisoes mais inteligentes.
               </p>
             </div>
 
@@ -101,7 +105,7 @@ export default function LoginPage() {
           </div>
 
           <p className="text-sm text-muted-foreground">
-            Finan 2024. Todos os direitos reservados.
+            Fyneo 2024. Todos os direitos reservados.
           </p>
         </div>
       </div>
@@ -111,11 +115,14 @@ export default function LoginPage() {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
-            <Link href="/" className="inline-flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <TrendingUp className="text-primary-foreground" size={22} />
-              </div>
-              <span className="text-2xl font-bold text-foreground">Finan</span>
+            <Link href="/" className="inline-flex items-center">
+              <Image 
+                src="/logo.jpeg" 
+                alt="Fyneo" 
+                width={140} 
+                height={48} 
+                className="h-12 w-auto"
+              />
             </Link>
           </div>
 

@@ -13,9 +13,9 @@ const jetbrainsMono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'Finan - Controle Financeiro Inteligente',
-  description: 'Plataforma completa para gestao de financas pessoais. Controle gastos, acompanhe metas e tome decisoes financeiras mais inteligentes.',
-  keywords: ['financas', 'controle financeiro', 'gestao', 'orcamento', 'metas financeiras'],
+  title: 'Fyneo - Financas Pessoais | Organize hoje, cresca amanha',
+  description: 'Fyneo e a plataforma completa para gestao de financas pessoais. Organize suas financas hoje e cresca amanha.',
+  keywords: ['financas pessoais', 'controle financeiro', 'gestao', 'orcamento', 'metas financeiras', 'fyneo'],
 }
 
 export const viewport: Viewport = {
