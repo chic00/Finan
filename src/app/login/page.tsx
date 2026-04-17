@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { signIn } from 'next-auth/react'
+import Image from 'next/image'
 import { Eye, EyeOff, Loader2, Shield, Zap, BarChart3 } from 'lucide-react'
-import Logo from '@/components/ui/Logo'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -52,7 +52,14 @@ export default function LoginPage() {
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div>
             <Link href="/" className="flex items-center">
-              <Logo size="lg" showSlogan />
+              <Image 
+                src="/logo.jpeg" 
+                alt="Fyneo - Organize hoje, cresca amanha" 
+                width={200} 
+                height={80} 
+                className="h-20 w-auto"
+                priority
+              />
             </Link>
           </div>
 
@@ -110,7 +117,13 @@ export default function LoginPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
             <Link href="/" className="inline-flex items-center">
-              <Logo size="md" />
+              <Image 
+                src="/logo.jpeg" 
+                alt="Fyneo" 
+                width={160} 
+                height={64} 
+                className="h-14 w-auto"
+              />
             </Link>
           </div>
 
