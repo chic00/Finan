@@ -4,12 +4,12 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut } from 'next-auth/react'
-import Image from 'next/image'
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, Tags,
   PiggyBank, Target, BarChart3, LogOut,
   Menu, X, RefreshCw, Bell,
 } from 'lucide-react'
+import Logo from '@/components/ui/Logo'
 import { cn } from '@/lib/utils'
 
 interface SidebarProps {
@@ -41,13 +41,7 @@ function NavContent({
     <>
       <div className="p-5 border-b border-border">
         <Link href="/dashboard" className="flex items-center" onClick={onLinkClick}>
-          <Image 
-            src="/logo.jpeg" 
-            alt="Fyneo" 
-            width={140} 
-            height={48} 
-            className="h-10 w-auto"
-          />
+          <Logo size="md" />
         </Link>
       </div>
 
@@ -119,13 +113,7 @@ export function Sidebar({ user }: SidebarProps) {
           <Menu size={22} className="text-foreground" />
         </button>
         <Link href="/dashboard" className="flex items-center ml-3">
-          <Image 
-            src="/logo.jpeg" 
-            alt="Fyneo" 
-            width={100} 
-            height={32} 
-            className="h-8 w-auto"
-          />
+          <Logo size="sm" />
         </Link>
       </div>
 

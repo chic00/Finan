@@ -3,8 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react'
+import Logo from '@/components/ui/Logo'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -77,13 +77,7 @@ export default function RegisterPage() {
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div>
             <Link href="/" className="flex items-center">
-              <Image 
-                src="/logo.jpeg" 
-                alt="Fyneo" 
-                width={180} 
-                height={60} 
-                className="h-14 w-auto"
-              />
+              <Logo size="lg" showSlogan />
             </Link>
           </div>
 
@@ -120,13 +114,7 @@ export default function RegisterPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
             <Link href="/" className="inline-flex items-center">
-              <Image 
-                src="/logo.jpeg" 
-                alt="Fyneo" 
-                width={140} 
-                height={48} 
-                className="h-12 w-auto"
-              />
+              <Logo size="md" />
             </Link>
           </div>
 
