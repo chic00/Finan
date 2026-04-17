@@ -13,7 +13,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <Sidebar user={session.user} />
 
       {/* Desktop: offset by sidebar width; Mobile: offset by top bar height */}

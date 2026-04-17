@@ -7,20 +7,21 @@ export function Button({
   className = '',
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'primary' | 'secondary' | 'danger'
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost'
   size?: 'sm' | 'md' | 'lg'
 }) {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed'
 
   const variants = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700',
-    secondary: 'bg-gray-100 text-gray-700 hover:bg-gray-200',
-    danger: 'bg-red-600 text-white hover:bg-red-700',
+    primary: 'bg-primary text-primary-foreground hover:bg-primary/90 glow-primary',
+    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+    ghost: 'bg-transparent text-foreground hover:bg-secondary',
   }
 
   const sizes = {
     sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2',
+    md: 'px-4 py-2.5',
     lg: 'px-6 py-3 text-lg',
   }
 
@@ -40,7 +41,7 @@ export function Input({
 }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
-      className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${className}`}
+      className={`w-full px-4 py-3 bg-secondary border border-border rounded-xl text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all ${className}`}
       {...props}
     />
   )
@@ -52,7 +53,7 @@ export function Select({
 }: React.SelectHTMLAttributes<HTMLSelectElement>) {
   return (
     <select
-      className={`w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition ${className}`}
+      className={`w-full px-4 py-3 bg-secondary border border-border rounded-xl text-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary outline-none transition-all ${className}`}
       {...props}
     >
       {props.children}
@@ -66,7 +67,7 @@ export function Label({
   ...props
 }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (
-    <label className={`block text-sm font-medium text-gray-700 mb-1 ${className}`} {...props}>
+    <label className={`block text-sm font-medium text-foreground mb-2 ${className}`} {...props}>
       {children}
     </label>
   )

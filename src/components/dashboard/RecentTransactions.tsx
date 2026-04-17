@@ -9,8 +9,8 @@ interface RecentTransactionsProps {
 export function RecentTransactions({ transactions }: RecentTransactionsProps) {
   if (transactions.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-400">
-        Nenhuma transação este mês
+      <div className="text-center py-8 text-muted-foreground">
+        Nenhuma transacao este mes
       </div>
     )
   }
@@ -18,26 +18,39 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
   const getIcon = (type: string) => {
     switch (type) {
       case 'income':
-        return <ArrowUpRight className="text-green-600" size={16} />
+        return <ArrowUpRight className="text-success" size={16} />
       case 'expense':
-        return <ArrowDownLeft className="text-red-600" size={16} />
+        return <ArrowDownLeft className="text-destructive" size={16} />
       case 'transfer':
-        return <ArrowLeftRight className="text-blue-600" size={16} />
+        return <ArrowLeftRight className="text-primary" size={16} />
       default:
         return null
+    }
+  }
+
+  const getIconBg = (type: string) => {
+    switch (type) {
+      case 'income':
+        return 'bg-success/10'
+      case 'expense':
+        return 'bg-destructive/10'
+      case 'transfer':
+        return 'bg-primary/10'
+      default:
+        return 'bg-secondary'
     }
   }
 
   const getAmountColor = (type: string) => {
     switch (type) {
       case 'income':
-        return 'text-green-600'
+        return 'text-success'
       case 'expense':
-        return 'text-red-600'
+        return 'text-destructive'
       case 'transfer':
-        return 'text-blue-600'
+        return 'text-primary'
       default:
-        return 'text-gray-900'
+        return 'text-foreground'
     }
   }
 
@@ -48,30 +61,30 @@ export function RecentTransactions({ transactions }: RecentTransactionsProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       {transactions.map((t) => (
         <div
           key={t.id}
-          className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
+          className="flex items-center justify-between py-3 px-3 rounded-xl hover:bg-secondary/50 transition-colors border-b border-border last:border-0"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+            <div className={`w-9 h-9 rounded-xl ${getIconBg(t.type)} flex items-center justify-center`}>
               {getIcon(t.type)}
             </div>
             <div>
-              <p className="font-medium text-gray-900 text-sm">
-                {t.description || t.category?.name || 'Transação'}
+              <p className="font-medium text-foreground text-sm">
+                {t.description || t.category?.name || 'Transacao'}
               </p>
-              <p className="text-xs text-gray-500">
-                {t.category?.name || 'Sem categoria'} • {t.account.name}
+              <p className="text-xs text-muted-foreground">
+                {t.category?.name || 'Sem categoria'} · {t.account.name}
               </p>
             </div>
           </div>
           <div className="text-right">
-            <p className={`font-medium text-sm ${getAmountColor(t.type)}`}>
+            <p className={`font-semibold text-sm ${getAmountColor(t.type)}`}>
               {formatAmount(t.amount, t.type)}
             </p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-muted-foreground">
               {formatDate(t.date)}
             </p>
           </div>
