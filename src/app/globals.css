@@ -1,1 +1,97 @@
 @import "tailwindcss";
+
+@theme inline {
+  --font-sans: 'Inter', 'Inter Fallback', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', monospace;
+
+  /* Fintech Dark Theme - Sophisticated & Professional */
+  --color-background: #0a0a0f;
+  --color-foreground: #fafafa;
+  
+  --color-card: #111118;
+  --color-card-foreground: #fafafa;
+  
+  --color-popover: #111118;
+  --color-popover-foreground: #fafafa;
+  
+  --color-primary: #00d4aa;
+  --color-primary-foreground: #0a0a0f;
+  
+  --color-secondary: #1a1a24;
+  --color-secondary-foreground: #a1a1aa;
+  
+  --color-muted: #18181f;
+  --color-muted-foreground: #71717a;
+  
+  --color-accent: #00d4aa;
+  --color-accent-foreground: #0a0a0f;
+  
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+
+  --color-success: #22c55e;
+  --color-success-foreground: #0a0a0f;
+
+  --color-warning: #f59e0b;
+  --color-warning-foreground: #0a0a0f;
+  
+  --color-border: #27272a;
+  --color-input: #27272a;
+  --color-ring: #00d4aa;
+  
+  --radius: 0.75rem;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for fintech feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted-foreground);
+}
+
+/* Selection color */
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  color: var(--color-foreground);
+}
+
+/* Focus styles */
+*:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Gradient text utility */
+.text-gradient {
+  background: linear-gradient(135deg, var(--color-primary) 0%, #00a3cc 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effect for buttons */
+.glow-primary {
+  box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+/* Subtle card glow on hover */
+.card-glow:hover {
+  box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 10%, transparent);
+}

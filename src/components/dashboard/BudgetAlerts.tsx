@@ -23,20 +23,20 @@ export function BudgetAlerts({ alerts }: BudgetAlertsProps) {
       {overBudget.map((alert) => (
         <div
           key={alert.category}
-          className="flex items-start gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl"
+          className="flex items-start gap-3 px-4 py-3 bg-destructive/10 border border-destructive/20 rounded-xl"
         >
-          <XCircle className="text-red-500 flex-shrink-0 mt-0.5" size={18} />
+          <XCircle className="text-destructive shrink-0 mt-0.5" size={18} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-red-800">
-              Orçamento estourado: <strong>{alert.category}</strong>
+            <p className="text-sm font-medium text-destructive">
+              Orcamento estourado: <strong>{alert.category}</strong>
             </p>
-            <p className="text-xs text-red-600 mt-0.5">
+            <p className="text-xs text-destructive/80 mt-0.5">
               Gasto {formatCurrency(alert.spent)} de {formatCurrency(alert.budget)} ({alert.percent}%)
             </p>
           </div>
           <Link
             href="/dashboard/orcamentos"
-            className="text-xs text-red-600 hover:underline font-medium flex-shrink-0"
+            className="text-xs text-destructive hover:underline font-medium shrink-0"
           >
             Ver
           </Link>
@@ -46,20 +46,20 @@ export function BudgetAlerts({ alerts }: BudgetAlertsProps) {
       {nearLimit.map((alert) => (
         <div
           key={alert.category}
-          className="flex items-start gap-3 px-4 py-3 bg-yellow-50 border border-yellow-200 rounded-xl"
+          className="flex items-start gap-3 px-4 py-3 bg-warning/10 border border-warning/20 rounded-xl"
         >
-          <AlertTriangle className="text-yellow-500 flex-shrink-0 mt-0.5" size={18} />
+          <AlertTriangle className="text-warning shrink-0 mt-0.5" size={18} />
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-yellow-800">
-              Atenção: <strong>{alert.category}</strong> — {alert.percent}% do orçamento utilizado
+            <p className="text-sm font-medium text-warning">
+              Atencao: <strong>{alert.category}</strong> — {alert.percent}% do orcamento utilizado
             </p>
-            <p className="text-xs text-yellow-600 mt-0.5">
+            <p className="text-xs text-warning/80 mt-0.5">
               {formatCurrency(alert.spent)} de {formatCurrency(alert.budget)}
             </p>
           </div>
           <Link
             href="/dashboard/orcamentos"
-            className="text-xs text-yellow-700 hover:underline font-medium flex-shrink-0"
+            className="text-xs text-warning hover:underline font-medium shrink-0"
           >
             Ver
           </Link>

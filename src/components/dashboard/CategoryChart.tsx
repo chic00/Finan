@@ -1,6 +1,6 @@
 'use client'
 
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { formatCurrency } from '@/lib/utils'
 
 interface CategoryChartProps {
@@ -16,8 +16,8 @@ export function CategoryChart({ data }: CategoryChartProps) {
 
   if (chartData.length === 0) {
     return (
-      <div className="h-64 flex items-center justify-center text-gray-400">
-        Nenhuma despesa registrada este mês
+      <div className="h-64 flex items-center justify-center text-muted-foreground">
+        Nenhuma despesa registrada este mes
       </div>
     )
   }
@@ -41,10 +41,15 @@ export function CategoryChart({ data }: CategoryChartProps) {
         <Tooltip
           formatter={(value) => formatCurrency(value as number)}
           contentStyle={{
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
+            backgroundColor: '#111118',
+            border: '1px solid #27272a',
+            borderRadius: '12px',
+            color: '#fafafa',
           }}
+          labelStyle={{ color: '#a1a1aa' }}
+        />
+        <Legend 
+          formatter={(value) => <span style={{ color: '#a1a1aa', fontSize: '12px' }}>{value}</span>}
         />
       </PieChart>
     </ResponsiveContainer>
