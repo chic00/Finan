@@ -6,16 +6,16 @@ interface LogoProps {
 
 export default function Logo({ className = '', showSlogan = false, size = 'md' }: LogoProps) {
   const sizes = {
-    sm: { width: 100, height: showSlogan ? 45 : 32 },
-    md: { width: 140, height: showSlogan ? 60 : 44 },
-    lg: { width: 200, height: showSlogan ? 85 : 64 },
+    sm: { width: 120, height: showSlogan ? 50 : 36 },
+    md: { width: 160, height: showSlogan ? 65 : 48 },
+    lg: { width: 220, height: showSlogan ? 90 : 68 },
   }
 
   const { width, height } = sizes[size]
 
   return (
     <svg
-      viewBox={showSlogan ? "0 0 200 85" : "0 0 200 64"}
+      viewBox={showSlogan ? "0 0 220 90" : "0 0 220 68"}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={className}
@@ -23,73 +23,74 @@ export default function Logo({ className = '', showSlogan = false, size = 'md' }
       height={height}
     >
       <defs>
-        <linearGradient id="logoGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#1a365d" />
-          <stop offset="50%" stopColor="#166534" />
-          <stop offset="100%" stopColor="#22c55e" />
+        {/* Gradiente verde vibrante para o F com seta */}
+        <linearGradient id="fGradient" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#059669" />
+          <stop offset="100%" stopColor="#10b981" />
         </linearGradient>
-        <linearGradient id="arrowGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#166534" />
-          <stop offset="100%" stopColor="#22c55e" />
+        <linearGradient id="arrowGradient" x1="0%" y1="50%" x2="100%" y2="50%">
+          <stop offset="0%" stopColor="#10b981" />
+          <stop offset="100%" stopColor="#34d399" />
         </linearGradient>
       </defs>
 
-      {/* F with arrow */}
+      {/* F com seta - em gradiente verde */}
       <g>
-        {/* F vertical stem */}
+        {/* Barra vertical do F */}
+        <rect x="6" y="14" width="12" height="40" rx="2" fill="url(#fGradient)" />
+        
+        {/* Barra horizontal superior do F */}
+        <rect x="18" y="14" width="20" height="10" rx="2" fill="url(#fGradient)" />
+        
+        {/* Barra horizontal do meio do F */}
+        <rect x="18" y="29" width="14" height="9" rx="2" fill="url(#fGradient)" />
+        
+        {/* Seta subindo */}
         <path
-          d="M8 12 L8 52 L18 52 L18 36 L32 36 L32 28 L18 28 L18 20 L18 12 Z"
-          fill="url(#logoGradient)"
-        />
-        {/* F top horizontal */}
-        <path
-          d="M18 12 L36 12 L36 20 L18 20 Z"
-          fill="url(#logoGradient)"
-        />
-        {/* Arrow going up from F */}
-        <path
-          d="M30 8 L42 8 L42 0 L54 14 L42 28 L42 20 L30 20 L30 8 Z"
+          d="M38 6 L50 6 L50 22 L56 22 L44 36 L32 22 L38 22 Z"
           fill="url(#arrowGradient)"
         />
       </g>
 
+      {/* YNEO - em branco */}
       {/* Y */}
       <path
-        d="M58 12 L68 28 L68 52 L78 52 L78 28 L88 12 L76 12 L73 18 L70 12 Z"
-        fill="url(#logoGradient)"
+        d="M68 14 L78 30 L78 54 L88 54 L88 30 L98 14 L86 14 L83 20 L80 14 Z"
+        fill="#ffffff"
       />
 
       {/* N */}
       <path
-        d="M94 12 L94 52 L104 52 L104 28 L116 52 L126 52 L126 12 L116 12 L116 36 L104 12 Z"
-        fill="url(#logoGradient)"
+        d="M106 14 L106 54 L116 54 L116 30 L130 54 L140 54 L140 14 L130 14 L130 38 L116 14 Z"
+        fill="#ffffff"
       />
 
       {/* E */}
       <path
-        d="M134 12 L134 52 L162 52 L162 44 L144 44 L144 36 L158 36 L158 28 L144 28 L144 20 L162 20 L162 12 Z"
-        fill="url(#logoGradient)"
+        d="M150 14 L150 54 L182 54 L182 46 L162 46 L162 38 L178 38 L178 30 L162 30 L162 22 L182 22 L182 14 Z"
+        fill="#ffffff"
       />
 
       {/* O */}
       <path
-        d="M168 12 L168 52 L198 52 L198 12 Z M178 20 L188 20 L188 44 L178 44 Z"
-        fill="url(#logoGradient)"
+        d="M190 14 C186 14 184 16 184 20 L184 48 C184 52 186 54 190 54 L210 54 C214 54 216 52 216 48 L216 20 C216 16 214 14 210 14 Z M194 22 L206 22 L206 46 L194 46 Z"
+        fill="#ffffff"
         fillRule="evenodd"
       />
 
       {/* Slogan */}
       {showSlogan && (
         <text
-          x="100"
-          y="74"
+          x="110"
+          y="78"
           textAnchor="middle"
-          fill="#64748b"
-          fontSize="11"
+          fill="#94a3b8"
+          fontSize="12"
           fontFamily="system-ui, sans-serif"
-          fontWeight="500"
+          fontWeight="400"
+          letterSpacing="0.5"
         >
-          Organize hoje, cresça amanhã
+          Organize hoje, cresca amanha
         </text>
       )}
     </svg>
