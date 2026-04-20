@@ -48,11 +48,7 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
 
   const handleOpenEdit = (cat: Category) => {
     setEditingCategory(cat)
-    setForm({
-      name: cat.name,
-      type: cat.type as FormState['type'],
-      color: cat.color || '#6B7280',
-    })
+    setForm({ name: cat.name, type: cat.type as FormState['type'], color: cat.color || '#6B7280' })
     setError('')
     setShowModal(true)
   }
@@ -67,14 +63,9 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
     e.preventDefault()
     setLoading(true)
     setError('')
-
-    const result = editingCategory
-      ? await updateCategory(editingCategory.id, form)
-      : await createCategory(form)
-
+    const result = editingCategory ? await updateCategory(editingCategory.id, form) : await createCategory(form)
     setLoading(false)
     if (result?.error) { setError(result.error); return }
-
     setShowModal(false)
     setEditingCategory(null)
     router.refresh()
@@ -88,64 +79,82 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
   }
 
   const typeLabel: Record<string, string> = {
-    income:   'Receitas',
-    expense:  'Despesas',
-    transfer: 'Transferências',
+    income: 'Receitas', expense: 'Despesas', transfer: 'Transferências',
+  }
+
+  const typeAccentColor: Record<string, string> = {
+    income: 'var(--color-success)',
+    expense: 'var(--color-destructive)',
+    transfer: 'var(--color-primary)',
   }
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Categorias</h1>
-          <p className="text-gray-500">Organize suas transações por categoria</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-foreground)' }}>Categorias</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--color-muted-foreground)' }}>Organize suas transações por categoria</p>
         </div>
-        <button
-          onClick={handleOpenCreate}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition"
-        >
+        <button onClick={handleOpenCreate}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all glow-primary"
+          style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}>
           <Plus size={18} /> Nova Categoria
         </button>
       </div>
 
       {(Object.entries(groupedCategories) as [string, Category[]][]).map(([type, cats]) => (
         <div key={type}>
-          <h2 className="text-lg font-semibold text-gray-700 mb-4">{typeLabel[type]}</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: typeAccentColor[type] }} />
+            <h2 className="text-base font-semibold" style={{ color: 'var(--color-foreground)' }}>{typeLabel[type]}</h2>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-muted-foreground)' }}>
+              {cats.length}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {cats.map((cat) => (
               <div key={cat.id}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md transition">
+                className="rounded-2xl p-4 transition-all hover:scale-[1.01]"
+                style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                      style={{ backgroundColor: cat.color || '#6B7280' }}
-                    >
-                      <Tag className="text-white" size={16} />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: cat.color || '#6B7280' }}>
+                      <Tag className="text-white" size={14} />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">{cat.name}</p>
+                    <div className="min-w-0">
+                      <p className="font-medium text-sm truncate" style={{ color: 'var(--color-foreground)' }}>{cat.name}</p>
                       {cat.isSystem && (
-                        <span className="text-xs text-gray-400">Sistema</span>
+                        <span className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Sistema</span>
                       )}
                     </div>
                   </div>
-
-                  {/* Categorias de sistema: sem ações. Categorias do usuário: editar + excluir */}
                   {!cat.isSystem && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenEdit(cat)}
-                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                        title="Editar"
-                      >
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <button onClick={() => handleOpenEdit(cat)}
+                        className="p-1.5 rounded-lg transition-all"
+                        style={{ color: 'var(--color-muted-foreground)' }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'
+                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+                        }}>
                         <Pencil size={13} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(cat.id)}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                        title="Excluir"
-                      >
+                      <button onClick={() => handleDelete(cat.id)}
+                        className="p-1.5 rounded-lg transition-all"
+                        style={{ color: 'var(--color-muted-foreground)' }}
+                        onMouseEnter={e => {
+                          (e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'
+                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)'
+                        }}
+                        onMouseLeave={e => {
+                          (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+                        }}>
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -158,71 +167,60 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
       ))}
 
       {categories.length === 0 && (
-        <div className="text-center py-12">
-          <Tag className="mx-auto text-gray-300" size={48} />
-          <p className="mt-4 text-gray-500">Nenhuma categoria encontrada</p>
+        <div className="text-center py-16 rounded-2xl" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+          <Tag size={48} className="mx-auto mb-4" style={{ color: 'var(--color-muted-foreground)' }} />
+          <p style={{ color: 'var(--color-muted-foreground)' }}>Nenhuma categoria encontrada</p>
         </div>
       )}
 
       {showModal && (
-        <Modal
-          title={editingCategory ? 'Editar Categoria' : 'Nova Categoria'}
-          onClose={handleClose}
-        >
+        <Modal title={editingCategory ? 'Editar Categoria' : 'Nova Categoria'} onClose={handleClose}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">{error}</div>
+              <div className="px-4 py-3 rounded-xl text-sm"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--color-destructive) 10%, transparent)', color: 'var(--color-destructive)' }}>
+                {error}
+              </div>
             )}
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-              <input
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="Ex: Alimentação"
-                required
-              />
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Nome</label>
+              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
+                placeholder="Ex: Alimentação" required />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-              <select
-                value={form.type}
-                onChange={(e) => setForm({ ...form, type: e.target.value as FormState['type'] })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              >
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Tipo</label>
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as FormState['type'] })}
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select">
                 <option value="expense">Despesa</option>
                 <option value="income">Receita</option>
                 <option value="transfer">Transferência</option>
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cor</label>
+              <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>Cor</label>
               <div className="flex flex-wrap gap-2">
                 {categoryColors.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setForm({ ...form, color })}
-                    className={`w-8 h-8 rounded-lg transition ${
-                      form.color === color ? 'ring-2 ring-offset-2 ring-blue-500' : ''
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
+                  <button key={color} type="button" onClick={() => setForm({ ...form, color })}
+                    className="w-8 h-8 rounded-xl transition-all"
+                    style={{
+                      backgroundColor: color,
+                      outline: form.color === color ? `3px solid var(--color-primary)` : 'none',
+                      outlineOffset: '2px',
+                      transform: form.color === color ? 'scale(1.15)' : 'scale(1)',
+                    }} />
                 ))}
               </div>
             </div>
-
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-3 pt-2">
               <button type="button" onClick={handleClose}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition">
+                className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all"
+                style={{ border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}>
                 Cancelar
               </button>
               <button type="submit" disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 glow-primary"
+                style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}>
                 {loading && <Loader2 className="animate-spin" size={18} />}
                 {editingCategory ? 'Salvar alterações' : 'Criar'}
               </button>

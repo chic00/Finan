@@ -8,9 +8,10 @@ import Image from 'next/image'
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, Tags,
   PiggyBank, Target, BarChart3, LogOut,
-  Menu, X, RefreshCw, Bell,
+  Menu, X, RefreshCw, Bell, Sun, Moon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useTheme } from '@/components/ui/ThemeProvider'
 
 interface SidebarProps {
   user?: { name?: string | null; email?: string | null }
@@ -36,16 +37,17 @@ function NavContent({
   onLinkClick?: () => void
 }) {
   const pathname = usePathname()
+  const { theme, toggleTheme } = useTheme()
 
   return (
     <>
-      <div className="p-5 border-b border-border">
+      <div className="p-5 border-b" style={{ borderColor: 'var(--color-border)' }}>
         <Link href="/dashboard" className="flex items-center" onClick={onLinkClick}>
-          <Image 
-            src="/logo.jpeg" 
-            alt="Fyneo" 
-            width={140} 
-            height={56} 
+          <Image
+            src="/logo.jpeg"
+            alt="Fyneo"
+            width={140}
+            height={56}
             className="h-12 w-auto"
           />
         </Link>
@@ -64,9 +66,27 @@ function NavContent({
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all',
                 isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  ? 'nav-active'
+                  : 'nav-inactive'
               )}
+              style={isActive ? {
+                backgroundColor: 'color-mix(in srgb, var(--color-primary) 12%, transparent)',
+                color: 'var(--color-primary)',
+              } : {
+                color: 'var(--color-muted-foreground)',
+              }}
+              onMouseEnter={e => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-secondary)'
+                  ;(e.currentTarget as HTMLElement).style.color = 'var(--color-foreground)'
+                }
+              }}
+              onMouseLeave={e => {
+                if (!isActive) {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+                  ;(e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                }
+              }}
             >
               <item.icon size={18} />
               {item.label}
@@ -75,22 +95,51 @@ function NavContent({
         })}
       </nav>
 
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center gap-3 px-3 py-3 mb-2 rounded-xl bg-secondary/50">
-          <div className="w-9 h-9 bg-primary/20 rounded-full flex items-center justify-center text-sm font-semibold text-primary shrink-0">
-            {user?.name?.charAt(0).toUpperCase() ||
-              user?.email?.charAt(0).toUpperCase() || 'U'}
+      <div className="p-4 space-y-2" style={{ borderTop: '1px solid var(--color-border)' }}>
+        {/* Theme Toggle */}
+        <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all"
+          style={{ color: 'var(--color-muted-foreground)' }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-secondary)'
+            ;(e.currentTarget as HTMLElement).style.color = 'var(--color-foreground)'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+            ;(e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+          }}
+        >
+          {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          {theme === 'dark' ? 'Tema Claro' : 'Tema Escuro'}
+        </button>
+
+        {/* User info */}
+        <div className="flex items-center gap-3 px-3 py-3 rounded-xl" style={{ backgroundColor: 'var(--color-secondary)' }}>
+          <div className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold shrink-0"
+            style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 20%, transparent)', color: 'var(--color-primary)' }}>
+            {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">
+            <p className="text-sm font-medium truncate" style={{ color: 'var(--color-foreground)' }}>
               {user?.name || 'Usuario'}
             </p>
-            <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            <p className="text-xs truncate" style={{ color: 'var(--color-muted-foreground)' }}>{user?.email}</p>
           </div>
         </div>
+
         <button
           onClick={() => signOut({ callbackUrl: '/login' })}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all w-full"
+          className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all w-full"
+          style={{ color: 'var(--color-muted-foreground)' }}
+          onMouseEnter={e => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)'
+            ;(e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'
+          }}
+          onMouseLeave={e => {
+            (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+            ;(e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+          }}
         >
           <LogOut size={18} />
           Sair
@@ -106,47 +155,46 @@ export function Sidebar({ user }: SidebarProps) {
   return (
     <>
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 bg-card border-r border-border flex-col z-30">
+      <aside className="hidden lg:flex fixed left-0 top-0 h-full w-64 flex-col z-30"
+        style={{ backgroundColor: 'var(--color-card)', borderRight: '1px solid var(--color-border)' }}>
         <NavContent user={user} />
       </aside>
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border flex items-center px-4 z-30">
-        <button 
-          onClick={() => setMobileOpen(true)} 
-          className="p-2 rounded-xl hover:bg-secondary transition-colors"
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-14 flex items-center px-4 z-30"
+        style={{ backgroundColor: 'var(--color-card)', borderBottom: '1px solid var(--color-border)' }}>
+        <button
+          onClick={() => setMobileOpen(true)}
+          className="p-2 rounded-xl transition-colors"
+          style={{ color: 'var(--color-foreground)' }}
         >
-          <Menu size={22} className="text-foreground" />
+          <Menu size={22} />
         </button>
         <Link href="/dashboard" className="flex items-center ml-3">
-          <Image 
-            src="/logo.jpeg" 
-            alt="Fyneo" 
-            width={100} 
-            height={40} 
-            className="h-8 w-auto"
-          />
+          <Image src="/logo.jpeg" alt="Fyneo" width={100} height={40} className="h-8 w-auto" />
         </Link>
       </div>
 
       {/* Mobile Overlay */}
       {mobileOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-background/80 backdrop-blur-sm z-40" 
-          onClick={() => setMobileOpen(false)} 
+        <div
+          className="lg:hidden fixed inset-0 z-40 backdrop-blur-sm"
+          style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setMobileOpen(false)}
         />
       )}
 
       {/* Mobile Sidebar */}
       <aside className={cn(
-        'lg:hidden fixed top-0 left-0 h-full w-72 bg-card border-r border-border flex flex-col z-50 transition-transform duration-300 ease-out',
+        'lg:hidden fixed top-0 left-0 h-full w-72 flex flex-col z-50 transition-transform duration-300 ease-out',
         mobileOpen ? 'translate-x-0' : '-translate-x-full'
-      )}>
+      )} style={{ backgroundColor: 'var(--color-card)', borderRight: '1px solid var(--color-border)' }}>
         <button
           onClick={() => setMobileOpen(false)}
-          className="absolute top-4 right-4 p-2 rounded-xl hover:bg-secondary transition-colors"
+          className="absolute top-4 right-4 p-2 rounded-xl transition-colors"
+          style={{ color: 'var(--color-muted-foreground)' }}
         >
-          <X size={20} className="text-muted-foreground" />
+          <X size={20} />
         </button>
         <NavContent user={user} onLinkClick={() => setMobileOpen(false)} />
       </aside>

@@ -78,18 +78,14 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
     e.preventDefault()
     setLoading(true)
     setError('')
-
-    // FIX: chama updateAccount quando editando, createAccount quando criando
     const result = editingAccount
       ? await updateAccount(editingAccount.id, form)
       : await createAccount(form)
-
     if (result?.error) {
       setError(result.error)
       setLoading(false)
       return
     }
-
     setShowModal(false)
     setEditingAccount(null)
     setForm(defaultForm)
@@ -100,10 +96,7 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
   const handleDelete = async (id: string) => {
     if (!confirm('Tem certeza? Todas as transações desta conta também serão excluídas.')) return
     const result = await deleteAccount(id)
-    if (result?.error) {
-      alert(result.error)
-      return
-    }
+    if (result?.error) { alert(result.error); return }
     router.refresh()
   }
 
@@ -117,12 +110,13 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Contas</h1>
-          <p className="text-gray-500">Gerencie suas contas bancárias</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'var(--color-foreground)' }}>Contas</h1>
+          <p className="text-sm mt-1" style={{ color: 'var(--color-muted-foreground)' }}>Gerencie suas contas bancárias</p>
         </div>
         <button
           onClick={handleOpenCreate}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all glow-primary"
+          style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}
         >
           <Plus size={18} />
           Nova Conta
@@ -130,10 +124,17 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
       </div>
 
       {/* Total Balance */}
-      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl p-6 text-white">
-        <p className="text-sm opacity-80">Saldo Total</p>
-        <p className="text-3xl font-bold">{formatCurrency(totalBalance)}</p>
-        <p className="text-sm opacity-70 mt-1">{accounts.length} conta(s) cadastrada(s)</p>
+      <div className="rounded-2xl p-6 text-white relative overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, var(--color-primary) 0%, color-mix(in srgb, var(--color-primary) 70%, #003366) 100%)' }}>
+        <div className="absolute inset-0 opacity-10"
+          style={{ backgroundImage: 'radial-gradient(circle at 80% 50%, white 0%, transparent 60%)' }} />
+        <p className="text-sm opacity-80 relative">Saldo Total</p>
+        <p className="text-3xl font-bold relative" style={{ color: 'var(--color-primary-foreground)' }}>
+          {formatCurrency(totalBalance)}
+        </p>
+        <p className="text-sm opacity-70 mt-1 relative" style={{ color: 'var(--color-primary-foreground)' }}>
+          {accounts.length} conta(s) cadastrada(s)
+        </p>
       </div>
 
       {/* Accounts Grid */}
@@ -146,41 +147,62 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
           return (
             <div
               key={account.id}
-              className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition"
+              className="rounded-2xl p-6 transition-all hover:scale-[1.01]"
+              style={{
+                backgroundColor: 'var(--color-card)',
+                border: '1px solid var(--color-border)',
+                boxShadow: 'var(--shadow-card)',
+              }}
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div
-                    className="w-10 h-10 rounded-lg flex items-center justify-center"
+                    className="w-10 h-10 rounded-xl flex items-center justify-center"
                     style={{ backgroundColor: account.color || '#3B82F6' }}
                   >
                     <Icon className="text-white" size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">{account.name}</h3>
-                    <p className="text-sm text-gray-500">{typeLabel}</p>
+                    <h3 className="font-semibold" style={{ color: 'var(--color-foreground)' }}>{account.name}</h3>
+                    <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>{typeLabel}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleOpenEdit(account)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-                    title="Editar conta"
+                    className="p-2 rounded-xl transition-all"
+                    style={{ color: 'var(--color-muted-foreground)' }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'
+                      ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                      ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+                    }}
                   >
                     <Pencil size={16} />
                   </button>
                   <button
                     onClick={() => handleDelete(account.id)}
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-                    title="Excluir conta"
+                    className="p-2 rounded-xl transition-all"
+                    style={{ color: 'var(--color-muted-foreground)' }}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'
+                      ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)'
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                      ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+                    }}
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <p className="text-sm text-gray-500">Saldo atual</p>
-                <p className={`text-xl font-bold ${balance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+              <div className="mt-4 pt-4" style={{ borderTop: '1px solid var(--color-border)' }}>
+                <p className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>Saldo atual</p>
+                <p className="text-xl font-bold" style={{ color: balance >= 0 ? 'var(--color-foreground)' : 'var(--color-destructive)' }}>
                   {formatCurrency(balance)}
                 </p>
               </div>
@@ -190,13 +212,11 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
       </div>
 
       {accounts.length === 0 && (
-        <div className="text-center py-12">
-          <Wallet className="mx-auto text-gray-300" size={48} />
-          <p className="mt-4 text-gray-500">Nenhuma conta cadastrada</p>
-          <button
-            onClick={handleOpenCreate}
-            className="mt-4 text-blue-600 hover:underline font-medium"
-          >
+        <div className="text-center py-16 rounded-2xl" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+          <Wallet size={48} className="mx-auto mb-4" style={{ color: 'var(--color-muted-foreground)' }} />
+          <p style={{ color: 'var(--color-muted-foreground)' }}>Nenhuma conta cadastrada</p>
+          <button onClick={handleOpenCreate} className="mt-4 font-medium transition-colors"
+            style={{ color: 'var(--color-primary)' }}>
             Criar primeira conta
           </button>
         </div>
@@ -204,44 +224,39 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
 
       {/* Modal */}
       {showModal && (
-        <Modal
-          title={editingAccount ? 'Editar Conta' : 'Nova Conta'}
-          onClose={handleClose}
-        >
+        <Modal title={editingAccount ? 'Editar Conta' : 'Nova Conta'} onClose={handleClose}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+              <div className="px-4 py-3 rounded-xl text-sm"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--color-destructive) 10%, transparent)', color: 'var(--color-destructive)', border: '1px solid color-mix(in srgb, var(--color-destructive) 20%, transparent)' }}>
                 {error}
               </div>
             )}
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Nome</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="Ex: Banco do Brasil"
                 required
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Tipo</label>
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value as FormState['type'] })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select"
               >
                 {accountTypes.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </select>
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
                 {editingAccount ? 'Saldo Atual' : 'Saldo Inicial'}
               </label>
               <input
@@ -249,37 +264,32 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
                 step="0.01"
                 value={form.balance}
                 onChange={(e) => setForm({ ...form, balance: parseFloat(e.target.value) || 0 })}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="0.00"
               />
             </div>
-
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cor</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Cor</label>
               <div className="flex items-center gap-3">
                 <input
                   type="color"
                   value={form.color}
                   onChange={(e) => setForm({ ...form, color: e.target.value })}
-                  className="w-12 h-12 border border-gray-300 rounded-lg cursor-pointer"
+                  className="w-12 h-10 rounded-lg cursor-pointer border"
+                  style={{ borderColor: 'var(--color-border)' }}
                 />
-                <span className="text-sm text-gray-500">{form.color}</span>
+                <span className="text-sm" style={{ color: 'var(--color-muted-foreground)' }}>{form.color}</span>
               </div>
             </div>
-
-            <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={handleClose}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={handleClose}
+                className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all"
+                style={{ border: '1px solid var(--color-border)', color: 'var(--color-foreground)', backgroundColor: 'transparent' }}>
                 Cancelar
               </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2"
-              >
+              <button type="submit" disabled={loading}
+                className="flex-1 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 glow-primary"
+                style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}>
                 {loading && <Loader2 className="animate-spin" size={18} />}
                 {editingAccount ? 'Salvar alterações' : 'Criar conta'}
               </button>
