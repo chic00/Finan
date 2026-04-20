@@ -26,8 +26,8 @@ interface RecurringWithRelations {
   frequency: string
   nextDueDate: Date
   isActive: boolean
-  isPaid: boolean          // ✅ novo campo
-  paidAt: Date | null      // ✅ novo campo
+  isPaid: boolean
+  paidAt: Date | null
   account: { id: string; name: string; color: string | null }
   category?: { id: string; name: string; color: string | null } | null
 }
@@ -70,23 +70,23 @@ function daysUntil(date: Date): number {
   return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-function dueBadge(days: number) {
-  if (days < 0)   return { label: 'Vencida',      cls: 'bg-red-100 text-red-700 border border-red-200' }
-  if (days === 0) return { label: 'Vence hoje!',  cls: 'bg-red-100 text-red-700 border border-red-200' }
-  if (days === 1) return { label: 'Vence amanhã', cls: 'bg-orange-100 text-orange-700 border border-orange-200' }
-  if (days <= 5)  return { label: `${days} dias`, cls: 'bg-yellow-100 text-yellow-700 border border-yellow-200' }
-  if (days <= 10) return { label: `${days} dias`, cls: 'bg-blue-100 text-blue-700 border border-blue-200' }
-  return           { label: `${days} dias`,        cls: 'bg-gray-100 text-gray-500 border border-gray-200' }
+function dueBadgeStyle(days: number): { label: string; color: string; bg: string } {
+  if (days < 0)   return { label: 'Vencida',      color: 'var(--color-destructive)', bg: 'color-mix(in srgb, var(--color-destructive) 15%, transparent)' }
+  if (days === 0) return { label: 'Vence hoje!',  color: 'var(--color-destructive)', bg: 'color-mix(in srgb, var(--color-destructive) 15%, transparent)' }
+  if (days === 1) return { label: 'Vence amanhã', color: 'var(--color-warning)',     bg: 'color-mix(in srgb, var(--color-warning) 15%, transparent)' }
+  if (days <= 5)  return { label: `${days} dias`, color: 'var(--color-warning)',     bg: 'color-mix(in srgb, var(--color-warning) 15%, transparent)' }
+  if (days <= 10) return { label: `${days} dias`, color: 'var(--color-primary)',     bg: 'color-mix(in srgb, var(--color-primary) 15%, transparent)' }
+  return               { label: `${days} dias`,   color: 'var(--color-muted-foreground)', bg: 'var(--color-secondary)' }
 }
 
 export function RecorrentesClient({ recorrentes, accounts, categories }: Props) {
   const router = useRouter()
-  const [showModal, setShowModal]     = useState(false)
-  const [editingId, setEditingId]     = useState<string | null>(null)
-  const [loading, setLoading]         = useState(false)
-  const [togglingId, setTogglingId]   = useState<string | null>(null)
-  const [error, setError]             = useState('')
-  const [form, setForm]               = useState<FormState>(defaultForm(accounts[0]?.id))
+  const [showModal, setShowModal]   = useState(false)
+  const [editingId, setEditingId]   = useState<string | null>(null)
+  const [loading, setLoading]       = useState(false)
+  const [togglingId, setTogglingId] = useState<string | null>(null)
+  const [error, setError]           = useState('')
+  const [form, setForm]             = useState<FormState>(defaultForm(accounts[0]?.id))
 
   const active = recorrentes.filter((r) => r.isActive)
   const paused = recorrentes.filter((r) => !r.isActive)
@@ -146,7 +146,6 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
     router.refresh()
   }
 
-  // ✅ NOVO: toggle pago/não pago
   const handleTogglePaid = async (id: string) => {
     setTogglingId(id)
     const result = await togglePaid(id)
@@ -156,31 +155,43 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
   }
 
   const renderCard = (r: RecurringWithRelations) => {
-    const days  = daysUntil(new Date(r.nextDueDate))
-    const badge = dueBadge(days)
+    const days = daysUntil(new Date(r.nextDueDate))
+    const badge = dueBadgeStyle(days)
     const isToggling = togglingId === r.id
+    const isLate = !r.isPaid && days < 0
+
+    // Card border color based on state
+    const cardBorderColor = !r.isActive
+      ? 'var(--color-border)'
+      : r.isPaid
+        ? 'color-mix(in srgb, var(--color-success) 25%, var(--color-border))'
+        : isLate
+          ? 'color-mix(in srgb, var(--color-destructive) 30%, var(--color-border))'
+          : days <= 2
+            ? 'color-mix(in srgb, var(--color-warning) 25%, var(--color-border))'
+            : 'var(--color-border)'
 
     return (
       <div
         key={r.id}
-        className={`bg-white rounded-xl border p-5 transition hover:shadow-md ${
-          !r.isActive  ? 'opacity-60 border-gray-200' :
-          r.isPaid     ? 'border-green-200 bg-green-50/20' :
-          days < 0     ? 'border-red-300 bg-red-50/30' :
-          days <= 2    ? 'border-orange-200' :
-                         'border-gray-200'
-        }`}
+        className="rounded-2xl p-5 transition-all"
+        style={{
+          backgroundColor: 'var(--color-card)',
+          border: `1px solid ${cardBorderColor}`,
+          boxShadow: 'var(--shadow-card)',
+          opacity: !r.isActive ? 0.65 : 1,
+        }}
       >
-        {/* Cabeçalho: nome + botões */}
+        {/* Header: nome + botões */}
         <div className="flex items-start justify-between gap-2 mb-3">
           <div className="flex items-start gap-3 min-w-0">
             <div className="w-3 h-3 rounded-full mt-1.5 flex-shrink-0"
-              style={{ backgroundColor: r.account.color || '#3B82F6' }} />
+              style={{ backgroundColor: r.account.color || 'var(--color-primary)' }} />
             <div className="min-w-0">
-              <p className="font-semibold text-gray-900 truncate">
+              <p className="font-semibold truncate" style={{ color: 'var(--color-foreground)' }}>
                 {r.description || 'Sem descrição'}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted-foreground)' }}>
                 📅 {frequencyLabel[r.frequency]} · {r.account.name}
                 {r.category && ` · ${r.category.name}`}
               </p>
@@ -189,18 +200,43 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
 
           <div className="flex items-center gap-1 flex-shrink-0">
             <button onClick={() => handleToggleActive(r.id)}
-              className="p-1.5 text-gray-400 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition"
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: 'var(--color-muted-foreground)' }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--color-warning)'
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-warning) 10%, transparent)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+              }}
               title={r.isActive ? 'Pausar' : 'Reativar'}>
               {r.isActive ? <PauseCircle size={15} /> : <PlayCircle size={15} />}
             </button>
             <button onClick={() => handleOpenEdit(r)}
-              className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition"
-              title="Editar">
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: 'var(--color-muted-foreground)' }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+              }}>
               <Pencil size={15} />
             </button>
             <button onClick={() => handleDelete(r.id)}
-              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
-              title="Excluir">
+              className="p-1.5 rounded-lg transition-all"
+              style={{ color: 'var(--color-muted-foreground)' }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)'
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
+                ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
+              }}>
               <Trash2 size={15} />
             </button>
           </div>
@@ -208,35 +244,42 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
 
         {/* Valor + vencimento */}
         <div className="flex items-center justify-between mb-4">
-          <p className={`text-xl font-bold ${r.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
+          <p className="text-xl font-bold"
+            style={{ color: r.type === 'income' ? 'var(--color-success)' : 'var(--color-destructive)' }}>
             {r.type === 'income' ? '+' : '-'}{formatCurrency(parseFloat(r.amount))}
           </p>
           <div className="text-right">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
               {r.isPaid ? 'Próximo vencimento' : 'Vencimento'}
             </p>
-            <p className="text-sm font-semibold text-gray-800 flex items-center gap-1 justify-end">
+            <p className="text-sm font-semibold flex items-center gap-1 justify-end" style={{ color: 'var(--color-foreground)' }}>
               <Calendar size={13} />
               {formatDate(new Date(r.nextDueDate))}
             </p>
           </div>
         </div>
 
-        {/* ✅ ÁREA DE STATUS PAGO/NÃO PAGO */}
+        {/* Status pago/não pago */}
         {r.isActive && (
-          <div className={`flex items-center justify-between rounded-lg px-3 py-2.5 border ${
-            r.isPaid
-              ? 'bg-green-50 border-green-200'
-              : 'bg-gray-50 border-gray-200'
-          }`}>
+          <div
+            className="flex items-center justify-between rounded-xl px-3 py-2.5"
+            style={{
+              backgroundColor: r.isPaid
+                ? 'color-mix(in srgb, var(--color-success) 10%, transparent)'
+                : 'var(--color-secondary)',
+              border: `1px solid ${r.isPaid
+                ? 'color-mix(in srgb, var(--color-success) 20%, transparent)'
+                : 'var(--color-border)'}`,
+            }}
+          >
             <div className="flex items-center gap-2">
               {r.isPaid ? (
                 <>
-                  <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />
+                  <CheckCircle2 size={16} style={{ color: 'var(--color-success)', flexShrink: 0 }} />
                   <div>
-                    <p className="text-sm font-semibold text-green-700">Pago</p>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--color-success)' }}>Pago</p>
                     {r.paidAt && (
-                      <p className="text-xs text-green-600">
+                      <p className="text-xs" style={{ color: 'var(--color-success)' }}>
                         em {formatDate(new Date(r.paidAt))}
                       </p>
                     )}
@@ -244,10 +287,11 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
                 </>
               ) : (
                 <>
-                  <Circle size={16} className="text-gray-400 flex-shrink-0" />
+                  <Circle size={16} style={{ color: isLate ? 'var(--color-destructive)' : 'var(--color-muted-foreground)', flexShrink: 0 }} />
                   <div>
-                    <p className="text-sm font-semibold text-gray-600">Não pago</p>
-                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded-full ${badge.cls}`}>
+                    <p className="text-sm font-semibold" style={{ color: 'var(--color-foreground)' }}>Não pago</p>
+                    <span className="text-xs font-medium px-1.5 py-0.5 rounded-full"
+                      style={{ color: badge.color, backgroundColor: badge.bg }}>
                       {badge.label}
                     </span>
                   </div>
@@ -255,21 +299,21 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
               )}
             </div>
 
-            {/* Botão toggle */}
             <button
               onClick={() => handleTogglePaid(r.id)}
               disabled={isToggling}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition disabled:opacity-50 ${
-                r.isPaid
-                  ? 'text-gray-600 bg-white border-gray-300 hover:bg-gray-100'
-                  : 'text-green-700 bg-green-600/10 border-green-300 hover:bg-green-100'
-              }`}
+              className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50"
+              style={{
+                color: r.isPaid ? 'var(--color-foreground)' : 'var(--color-success)',
+                backgroundColor: r.isPaid
+                  ? 'var(--color-secondary)'
+                  : 'color-mix(in srgb, var(--color-success) 12%, transparent)',
+                border: `1px solid ${r.isPaid ? 'var(--color-border)' : 'color-mix(in srgb, var(--color-success) 30%, transparent)'}`,
+              }}
             >
               {isToggling
                 ? <Loader2 size={13} className="animate-spin" />
-                : r.isPaid
-                  ? 'Desfazer'
-                  : 'Marcar pago'
+                : r.isPaid ? 'Desfazer' : 'Marcar pago'
               }
             </button>
           </div>
@@ -278,60 +322,71 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
     )
   }
 
+  // Summary stats
+  const summaryItems = [
+    { label: 'Total ativas',   value: active.length.toString(),  sub: 'recorrências',  color: 'var(--color-primary)' },
+    { label: 'A pagar',        value: active.filter((r) => !r.isPaid && daysUntil(new Date(r.nextDueDate)) <= 7).length.toString(), sub: 'em 7 dias', color: 'var(--color-warning)' },
+    { label: 'Gasto mensal',   value: formatCurrency(active.filter((r) => r.type === 'expense' && r.frequency === 'monthly').reduce((s, r) => s + parseFloat(r.amount), 0)), sub: 'estimado', color: 'var(--color-destructive)' },
+    { label: 'Receita mensal', value: formatCurrency(active.filter((r) => r.type === 'income'  && r.frequency === 'monthly').reduce((s, r) => s + parseFloat(r.amount), 0)), sub: 'estimada', color: 'var(--color-success)' },
+  ]
+
   return (
     <div className="space-y-8">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <RefreshCw size={22} /> Contas Recorrentes
+          <h1 className="text-2xl font-bold flex items-center gap-2" style={{ color: 'var(--color-foreground)' }}>
+            <RefreshCw size={22} style={{ color: 'var(--color-primary)' }} /> Contas Recorrentes
           </h1>
-          <p className="text-sm text-gray-500 mt-0.5">
+          <p className="text-sm mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
             Marque cada conta manualmente quando pagar. Ao marcar como pago, o próximo vencimento é calculado automaticamente.
           </p>
         </div>
         <button onClick={handleOpenCreate}
-          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition">
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all glow-primary"
+          style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}>
           <Plus size={18} /> Nova recorrente
         </button>
       </div>
 
-      {/* Resumo */}
+      {/* Summary */}
       {recorrentes.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {[
-            { label: 'Total ativas',     value: active.length.toString(),  sub: 'recorrências',  color: 'text-blue-600' },
-            { label: 'A pagar',          value: active.filter((r) => !r.isPaid && daysUntil(new Date(r.nextDueDate)) <= 7).length.toString(), sub: 'em 7 dias', color: 'text-orange-600' },
-            { label: 'Gasto mensal',     value: formatCurrency(active.filter((r) => r.type === 'expense' && r.frequency === 'monthly').reduce((s, r) => s + parseFloat(r.amount), 0)), sub: 'estimado', color: 'text-red-600' },
-            { label: 'Receita mensal',   value: formatCurrency(active.filter((r) => r.type === 'income'  && r.frequency === 'monthly').reduce((s, r) => s + parseFloat(r.amount), 0)), sub: 'estimada', color: 'text-green-600' },
-          ].map((s) => (
-            <div key={s.label} className="bg-white rounded-xl border border-gray-200 p-4">
-              <p className="text-xs text-gray-500">{s.label}</p>
-              <p className={`text-lg font-bold ${s.color}`}>{s.value}</p>
-              <p className="text-xs text-gray-400">{s.sub}</p>
+          {summaryItems.map((s) => (
+            <div key={s.label} className="rounded-2xl p-4 transition-all"
+              style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+              <p className="text-xs mb-1" style={{ color: 'var(--color-muted-foreground)' }}>{s.label}</p>
+              <p className="text-lg font-bold" style={{ color: s.color }}>{s.value}</p>
+              <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>{s.sub}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Ativas */}
+      {/* Active */}
       {active.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Ativas ({active.length})
-          </h2>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: 'var(--color-primary)' }} />
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-foreground)' }}>
+              Ativas ({active.length})
+            </h2>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {active.map(renderCard)}
           </div>
         </div>
       )}
 
-      {/* Pausadas */}
+      {/* Paused */}
       {paused.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">
-            Pausadas ({paused.length})
-          </h2>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-1 h-5 rounded-full" style={{ backgroundColor: 'var(--color-muted-foreground)' }} />
+            <h2 className="text-sm font-semibold uppercase tracking-wider" style={{ color: 'var(--color-muted-foreground)' }}>
+              Pausadas ({paused.length})
+            </h2>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paused.map(renderCard)}
           </div>
@@ -340,55 +395,55 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
 
       {/* Empty */}
       {recorrentes.length === 0 && (
-        <div className="text-center py-16 bg-white rounded-xl border border-gray-200">
-          <RefreshCw className="mx-auto text-gray-300 mb-4" size={48} />
-          <h3 className="text-lg font-semibold text-gray-700">Nenhuma conta recorrente</h3>
-          <p className="text-gray-400 text-sm mt-1 mb-6">
+        <div className="text-center py-16 rounded-2xl"
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+          <RefreshCw size={48} className="mx-auto mb-4" style={{ color: 'var(--color-muted-foreground)' }} />
+          <h3 className="text-lg font-semibold mb-1" style={{ color: 'var(--color-foreground)' }}>Nenhuma conta recorrente</h3>
+          <p className="text-sm mb-6" style={{ color: 'var(--color-muted-foreground)' }}>
             Cadastre suas contas fixas para acompanhar o pagamento.
           </p>
           <button onClick={handleOpenCreate}
-            className="inline-flex items-center gap-2 bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition">
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-medium transition-all glow-primary"
+            style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}>
             <Plus size={18} /> Cadastrar primeira recorrente
           </button>
         </div>
       )}
 
-      {/* Modal criar / editar */}
+      {/* Modal criar/editar */}
       {showModal && (
-        <Modal
-          title={editingId ? 'Editar recorrente' : 'Nova conta recorrente'}
-          onClose={() => setShowModal(false)}
-        >
+        <Modal title={editingId ? 'Editar recorrente' : 'Nova conta recorrente'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-              <div className="flex items-center gap-2 bg-red-50 text-red-700 px-4 py-3 rounded-lg text-sm">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm"
+                style={{ backgroundColor: 'color-mix(in srgb, var(--color-destructive) 10%, transparent)', color: 'var(--color-destructive)' }}>
                 <AlertCircle size={16} /> {error}
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Descrição *</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Descrição *</label>
               <input type="text" value={form.description}
                 onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="Ex: Netflix, Aluguel, Internet..." required />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Tipo</label>
                 <select value={form.type}
                   onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as 'expense' | 'income', categoryId: '' }))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                  className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select">
                   <option value="expense">Despesa</option>
                   <option value="income">Receita</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Frequência</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Frequência</label>
                 <select value={form.frequency}
                   onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value as FormState['frequency'] }))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                  className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select">
                   <option value="daily">Diária</option>
                   <option value="weekly">Semanal</option>
                   <option value="monthly">Mensal</option>
@@ -398,28 +453,28 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor *</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Valor *</label>
               <input type="number" step="0.01" min="0.01" value={form.amount || ''}
                 onChange={(e) => setForm((p) => ({ ...p, amount: parseFloat(e.target.value) || 0 }))}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="0,00" required />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Conta bancária *</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Conta bancária *</label>
               <select value={form.accountId}
                 onChange={(e) => setForm((p) => ({ ...p, accountId: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required>
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select" required>
                 <option value="">Selecione...</option>
                 {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+              <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Categoria</label>
               <select value={form.categoryId}
                 onChange={(e) => setForm((p) => ({ ...p, categoryId: e.target.value }))}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select">
                 <option value="">Sem categoria</option>
                 {filteredCategories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
@@ -427,28 +482,30 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>
                   {editingId ? 'Próximo vencimento *' : 'Primeiro vencimento *'}
                 </label>
                 <input type="date" value={form.startDate}
                   onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" required />
+                  className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input" required />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Encerra em (opcional)</label>
+                <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Encerra em (opcional)</label>
                 <input type="date" value={form.endDate}
                   onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input" />
               </div>
             </div>
 
             <div className="flex gap-3 pt-2">
               <button type="button" onClick={() => setShowModal(false)}
-                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition">
+                className="flex-1 px-4 py-2.5 rounded-xl font-medium transition-all"
+                style={{ border: '1px solid var(--color-border)', color: 'var(--color-foreground)' }}>
                 Cancelar
               </button>
               <button type="submit" disabled={loading}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 transition disabled:opacity-50 flex items-center justify-center gap-2">
+                className="flex-1 py-2.5 rounded-xl font-medium transition-all disabled:opacity-50 flex items-center justify-center gap-2 glow-primary"
+                style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}>
                 {loading && <Loader2 className="animate-spin" size={18} />}
                 {editingId ? 'Salvar alterações' : 'Criar'}
               </button>

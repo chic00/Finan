@@ -19,11 +19,8 @@ export default async function DashboardPage() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
   const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
-  // ── Busca em paralelo ─────────────────────────────────────────────
   const [accounts, monthlyTransactions, budgetAlerts, recurringThisMonth] = await Promise.all([
-    db.query.bankAccounts.findMany({
-      where: eq(bankAccounts.userId, userId),
-    }),
+    db.query.bankAccounts.findMany({ where: eq(bankAccounts.userId, userId) }),
     db.query.transactions.findMany({
       where: and(
         eq(transactions.userId, userId),
@@ -34,19 +31,13 @@ export default async function DashboardPage() {
       orderBy: (t, { desc }) => [desc(t.date)],
     }),
     checkBudgetAlerts(now.getMonth() + 1, now.getFullYear()),
-
-    // Recorrentes ativas com vencimento neste mes ou ja vencidas e nao pagas
     db.query.recurringTransactions.findMany({
-      where: and(
-        eq(recurringTransactions.userId, userId),
-        eq(recurringTransactions.isActive, true),
-      ),
+      where: and(eq(recurringTransactions.userId, userId), eq(recurringTransactions.isActive, true)),
       with: { category: true, account: true },
       orderBy: (r, { asc }) => [asc(r.nextDueDate)],
     }),
   ])
 
-  // ── Filtra recorrentes relevantes para o mes atual ────────────────
   const relevantRecurring = recurringThisMonth.filter((r) => {
     const due = new Date(r.nextDueDate)
     const isThisMonth = due >= monthStart && due <= monthEnd
@@ -54,111 +45,87 @@ export default async function DashboardPage() {
     return isThisMonth || isOverdueUnpaid
   })
 
-  // ── KPIs ─────────────────────────────────────────────────────────
-  const totalBalance = accounts.reduce(
-    (sum, acc) => sum + parseFloat(acc.balance as string), 0
-  )
-
-  const monthlyIncome = monthlyTransactions
-    .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
-
-  const monthlyExpense = monthlyTransactions
-    .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
+  const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance as string), 0)
+  const monthlyIncome = monthlyTransactions.filter((t) => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
+  const monthlyExpense = monthlyTransactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
 
   const expensesByCategory = monthlyTransactions
     .filter((t) => t.type === 'expense')
-    .reduce(
-      (acc, t) => {
-        const catName  = t.category?.name  || 'Sem categoria'
-        const catColor = t.category?.color || '#6B7280'
-        if (!acc[catName]) acc[catName] = { amount: 0, color: catColor }
-        acc[catName].amount += parseFloat(t.amount as string)
-        return acc
-      },
-      {} as Record<string, { amount: number; color: string }>
-    )
+    .reduce((acc, t) => {
+      const catName  = t.category?.name  || 'Sem categoria'
+      const catColor = t.category?.color || '#6B7280'
+      if (!acc[catName]) acc[catName] = { amount: 0, color: catColor }
+      acc[catName].amount += parseFloat(t.amount as string)
+      return acc
+    }, {} as Record<string, { amount: number; color: string }>)
 
-  const MONTHS = [
-    'Janeiro','Fevereiro','Marco','Abril','Maio','Junho',
-    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
-  ]
+  const MONTHS = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-foreground)' }}>Dashboard</h1>
+        <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
           {MONTHS[now.getMonth()]} {now.getFullYear()} — visao geral das suas financas
         </p>
       </div>
 
-      {/* Alertas de orcamento */}
-      {budgetAlerts.length > 0 && (
-        <BudgetAlerts alerts={budgetAlerts} />
-      )}
+      {budgetAlerts.length > 0 && <BudgetAlerts alerts={budgetAlerts} />}
 
-      {/* KPI Cards */}
+      {/* KPI Cards — sem bordas Tailwind hardcoded */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Saldo Total</CardTitle>
-              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                <Wallet className="text-primary" size={16} />
-              </div>
+        {/* Saldo Total */}
+        <div className="rounded-2xl p-5 transition-all"
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Saldo Total</p>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)' }}>
+              <Wallet size={16} style={{ color: 'var(--color-primary)' }} />
             </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className={`text-2xl font-bold ${totalBalance >= 0 ? 'text-foreground' : 'text-destructive'}`}>
-              {formatCurrency(totalBalance)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">{accounts.length} conta(s) ativas</p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold" style={{ color: totalBalance >= 0 ? 'var(--color-foreground)' : 'var(--color-destructive)' }}>
+            {formatCurrency(totalBalance)}
+          </p>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>{accounts.length} conta(s) ativas</p>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Receitas do Mes</CardTitle>
-              <div className="w-8 h-8 rounded-lg bg-success/10 flex items-center justify-center">
-                <TrendingUp className="text-success" size={16} />
-              </div>
+        {/* Receitas */}
+        <div className="rounded-2xl p-5 transition-all"
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Receitas do Mes</p>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 15%, transparent)' }}>
+              <TrendingUp size={16} style={{ color: 'var(--color-success)' }} />
             </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-2xl font-bold text-success">{formatCurrency(monthlyIncome)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {monthlyTransactions.filter((t) => t.type === 'income').length} transacoes
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold" style={{ color: 'var(--color-success)' }}>{formatCurrency(monthlyIncome)}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+            {monthlyTransactions.filter((t) => t.type === 'income').length} transacoes
+          </p>
+        </div>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Despesas do Mes</CardTitle>
-              <div className="w-8 h-8 rounded-lg bg-destructive/10 flex items-center justify-center">
-                <TrendingDown className="text-destructive" size={16} />
-              </div>
+        {/* Despesas */}
+        <div className="rounded-2xl p-5 transition-all"
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Despesas do Mes</p>
+            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-destructive) 15%, transparent)' }}>
+              <TrendingDown size={16} style={{ color: 'var(--color-destructive)' }} />
             </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <p className="text-2xl font-bold text-destructive">{formatCurrency(monthlyExpense)}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {monthlyTransactions.filter((t) => t.type === 'expense').length} transacoes
-            </p>
-          </CardContent>
-        </Card>
+          </div>
+          <p className="text-2xl font-bold" style={{ color: 'var(--color-destructive)' }}>{formatCurrency(monthlyExpense)}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+            {monthlyTransactions.filter((t) => t.type === 'expense').length} transacoes
+          </p>
+        </div>
       </div>
 
-      {/* Bloco de contas recorrentes do mes */}
-      {relevantRecurring.length > 0 && (
-        <RecurringAlert items={relevantRecurring} />
-      )}
+      {relevantRecurring.length > 0 && <RecurringAlert items={relevantRecurring} />}
 
-      {/* Graficos */}
+      {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -179,7 +146,7 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Transacoes recentes */}
+      {/* Recent Transactions */}
       <Card>
         <CardHeader>
           <CardTitle>Transacoes Recentes</CardTitle>
