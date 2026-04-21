@@ -1,133 +1,92 @@
 @import "tailwindcss";
 
-/* ── Base theme variables (dark by default) ──────────────────────── */
+/* ── Theme variables (dark by default) ───────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --font-sans: 'Inter', 'Inter Fallback', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', monospace;
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
 
-  --color-background: #0a0a0f;
-  --color-foreground: #fafafa;
-
-  --color-card: #111118;
-  --color-card-foreground: #fafafa;
-
-  --color-popover: #111118;
-  --color-popover-foreground: #fafafa;
-
-  --color-primary: #00d4aa;
-  --color-primary-foreground: #0a0a0f;
-
-  --color-secondary: #1a1a24;
+  --color-background:          #0a0a0f;
+  --color-foreground:          #fafafa;
+  --color-card:                #111118;
+  --color-card-foreground:     #fafafa;
+  --color-primary:             #00d4aa;
+  --color-primary-foreground:  #0a0a0f;
+  --color-secondary:           #1a1a24;
   --color-secondary-foreground: #a1a1aa;
-
-  --color-muted: #18181f;
-  --color-muted-foreground: #71717a;
-
-  --color-accent: #00d4aa;
-  --color-accent-foreground: #0a0a0f;
-
-  --color-destructive: #ef4444;
+  --color-muted:               #18181f;
+  --color-muted-foreground:    #71717a;
+  --color-accent:              #00d4aa;
+  --color-accent-foreground:   #0a0a0f;
+  --color-destructive:         #ef4444;
   --color-destructive-foreground: #fafafa;
+  --color-success:             #22c55e;
+  --color-success-foreground:  #0a0a0f;
+  --color-warning:             #f59e0b;
+  --color-warning-foreground:  #0a0a0f;
+  --color-border:              #27272a;
+  --color-input:               #1a1a24;
+  --color-ring:                #00d4aa;
 
-  --color-success: #22c55e;
-  --color-success-foreground: #0a0a0f;
+  --color-input-bg:            #1a1a24;
+  --color-input-text:          #fafafa;
+  --color-input-placeholder:   #52525b;
 
-  --color-warning: #f59e0b;
-  --color-warning-foreground: #0a0a0f;
-
-  --color-border: #27272a;
-  --color-input: #1a1a24;
-  --color-ring: #00d4aa;
-
-  --color-input-bg: #1a1a24;
-  --color-input-text: #fafafa;
-  --color-input-placeholder: #52525b;
-  --color-select-bg: #1a1a24;
+  --shadow-card:   0 4px 24px rgba(0, 0, 0, 0.4);
+  --shadow-modal:  0 25px 50px rgba(0, 0, 0, 0.6);
 
   --radius: 0.75rem;
-
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.4);
-  --shadow-modal: 0 25px 50px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Light theme ─────────────────────────────────────────────────── */
 [data-theme="light"] {
-  --color-background: #f4f6fb;
-  --color-foreground: #0f172a;
-
-  --color-card: #ffffff;
-  --color-card-foreground: #0f172a;
-
-  --color-popover: #ffffff;
-  --color-popover-foreground: #0f172a;
-
-  --color-primary: #0891b2;
-  --color-primary-foreground: #ffffff;
-
-  --color-secondary: #f1f5f9;
+  --color-background:          #f4f6fb;
+  --color-foreground:          #0f172a;
+  --color-card:                #ffffff;
+  --color-card-foreground:     #0f172a;
+  --color-primary:             #0891b2;
+  --color-primary-foreground:  #ffffff;
+  --color-secondary:           #f1f5f9;
   --color-secondary-foreground: #475569;
-
-  --color-muted: #f8fafc;
-  --color-muted-foreground: #94a3b8;
-
-  --color-accent: #0891b2;
-  --color-accent-foreground: #ffffff;
-
-  --color-destructive: #dc2626;
+  --color-muted:               #f8fafc;
+  --color-muted-foreground:    #94a3b8;
+  --color-accent:              #0891b2;
+  --color-accent-foreground:   #ffffff;
+  --color-destructive:         #dc2626;
   --color-destructive-foreground: #ffffff;
+  --color-success:             #16a34a;
+  --color-success-foreground:  #ffffff;
+  --color-warning:             #d97706;
+  --color-warning-foreground:  #ffffff;
+  --color-border:              #e2e8f0;
+  --color-input:               #f1f5f9;
+  --color-ring:                #0891b2;
 
-  --color-success: #16a34a;
-  --color-success-foreground: #ffffff;
+  --color-input-bg:            #f8fafc;
+  --color-input-text:          #0f172a;
+  --color-input-placeholder:   #94a3b8;
 
-  --color-warning: #d97706;
-  --color-warning-foreground: #ffffff;
-
-  --color-border: #e2e8f0;
-  --color-input: #f1f5f9;
-  --color-ring: #0891b2;
-
-  --color-input-bg: #f8fafc;
-  --color-input-text: #0f172a;
-  --color-input-placeholder: #94a3b8;
-  --color-select-bg: #f8fafc;
-
-  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
-  --shadow-modal: 0 20px 60px rgba(0, 0, 0, 0.15);
+  --shadow-card:   0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
+  --shadow-modal:  0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
-/* ── Smooth theme transitions ────────────────────────────────────── */
+/* ── Smooth transitions ──────────────────────────────────────────── */
 *, *::before, *::after {
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.15s ease;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);
 }
 
-/* ── Custom scrollbar ────────────────────────────────────────────── */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--color-background);
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--color-border);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted-foreground);
-}
+/* ── Scrollbar ───────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--color-background); }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-muted-foreground); }
 
 /* ── Selection ───────────────────────────────────────────────────── */
 ::selection {
@@ -141,7 +100,7 @@ body {
   outline-offset: 2px;
 }
 
-/* ── Gradient text ───────────────────────────────────────────────── */
+/* ── Utilities ───────────────────────────────────────────────────── */
 .text-gradient {
   background: linear-gradient(135deg, var(--color-primary) 0%, #00a3cc 100%);
   -webkit-background-clip: text;
@@ -149,44 +108,92 @@ body {
   background-clip: text;
 }
 
-/* ── Glow effect ─────────────────────────────────────────────────── */
 .glow-primary {
   box-shadow: 0 0 20px color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
 
-/* ── Card glow ───────────────────────────────────────────────────── */
-.card-glow:hover {
-  box-shadow: 0 0 40px color-mix(in srgb, var(--color-primary) 10%, transparent);
-}
-
-/* ── Input base styles ───────────────────────────────────────────── */
-.theme-input {
-  background-color: var(--color-input-bg) !important;
-  color: var(--color-input-text) !important;
-  border-color: var(--color-border) !important;
-}
-
-.theme-input::placeholder {
-  color: var(--color-input-placeholder) !important;
-}
-
-.theme-input:focus {
-  border-color: var(--color-primary) !important;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent) !important;
-}
-
-/* ── Select ─────────────────────────────────────────────────────── */
-.theme-select {
-  background-color: var(--color-select-bg) !important;
-  color: var(--color-input-text) !important;
-  border-color: var(--color-border) !important;
-}
-
-/* ── Light theme specific refinements ───────────────────────────── */
 [data-theme="light"] .glow-primary {
   box-shadow: 0 4px 14px color-mix(in srgb, var(--color-primary) 25%, transparent);
 }
 
-[data-theme="light"] .card-glow:hover {
-  box-shadow: 0 8px 32px color-mix(in srgb, var(--color-primary) 12%, transparent);
+/* ── Inputs / Selects ────────────────────────────────────────────── */
+.theme-input {
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-input-text) !important;
+  border: 1px solid var(--color-border) !important;
+}
+.theme-input::placeholder {
+  color: var(--color-input-placeholder) !important;
+}
+.theme-input:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent) !important;
+  outline: none !important;
+}
+
+.theme-select {
+  background-color: var(--color-input-bg) !important;
+  color: var(--color-input-text) !important;
+  border: 1px solid var(--color-border) !important;
+}
+.theme-select:focus {
+  border-color: var(--color-primary) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-primary) 20%, transparent) !important;
+  outline: none !important;
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────── */
+.sidebar-bg {
+  background-color: var(--color-card);
+}
+.sidebar-border-r {
+  border-right: 1px solid var(--color-border);
+}
+.sidebar-border-b {
+  border-bottom: 1px solid var(--color-border);
+}
+.sidebar-border-t {
+  border-top: 1px solid var(--color-border);
+}
+.sidebar-overlay {
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+}
+.sidebar-user-bg {
+  background-color: var(--color-secondary);
+}
+.sidebar-avatar {
+  background-color: color-mix(in srgb, var(--color-primary) 20%, transparent);
+  color: var(--color-primary);
+}
+.sidebar-user-name {
+  color: var(--color-foreground);
+}
+.sidebar-user-email {
+  color: var(--color-muted-foreground);
+}
+
+/* ── Nav links ───────────────────────────────────────────────────── */
+.nav-link-active {
+  background-color: color-mix(in srgb, var(--color-primary) 12%, transparent);
+  color: var(--color-primary);
+}
+.nav-link-inactive {
+  color: var(--color-muted-foreground);
+}
+.nav-link-inactive:hover {
+  background-color: var(--color-secondary);
+  color: var(--color-foreground);
+}
+.nav-link-danger {
+  color: var(--color-muted-foreground);
+}
+.nav-link-danger:hover {
+  background-color: color-mix(in srgb, var(--color-destructive) 10%, transparent);
+  color: var(--color-destructive);
+}
+
+/* ── Recent transactions row hover ──────────────────────────────── */
+.recent-tx-row:hover {
+  background-color: var(--color-secondary);
 }
