@@ -1,7 +1,7 @@
 import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Finan <onboarding@resend.dev>'
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'Fyneo <onboarding@resend.dev>'
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value)
@@ -57,7 +57,7 @@ export async function sendDueBillEmail(to: string, data: DueBillEmailData): Prom
           <!-- ── Header ─────────────────────────────────────── -->
           <tr>
             <td style="background-color:${theme.color};padding:28px 32px;text-align:center;">
-              <p style="margin:0;color:rgba(255,255,255,0.85);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">💰 FINAN</p>
+              <p style="margin:0;color:rgba(255,255,255,0.85);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;">💰 FYNEO</p>
               <p style="margin:10px 0 0;color:#FFFFFF;font-size:22px;font-weight:700;line-height:1.3;">${theme.text}</p>
             </td>
           </tr>
@@ -129,7 +129,7 @@ export async function sendDueBillEmail(to: string, data: DueBillEmailData): Prom
           <tr>
             <td style="padding:16px 32px;background-color:#F9FAFB;border-top:1px solid #E5E7EB;text-align:center;">
               <p style="margin:0;color:#9CA3AF;font-size:12px;line-height:1.6;">
-                Finan &mdash; Controle de Finan&ccedil;as Pessoais
+                Fyneo &mdash; Controle de Finan&ccedil;as Pessoais
                 &nbsp;&middot;&nbsp;
                 <a href="${appUrl}/dashboard/configuracoes" style="color:#9CA3AF;text-decoration:underline;">Gerenciar notifica&ccedil;&otilde;es</a>
               </p>
