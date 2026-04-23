@@ -64,7 +64,7 @@ Edite o arquivo `.env` com os seus dados:
 ```env
 DATABASE_URL="postgresql://USER:PASSWORD@HOST:5432/DB_NAME"
 AUTH_SECRET="gere-com-openssl-rand-base64-32"
-NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_URL="https://fyneo.vercel.app"
 ```
 
 > **Dica:** Gere um `AUTH_SECRET` seguro com:
@@ -84,7 +84,7 @@ npm run db:push
 npm run dev
 ```
 
-Acesse [http://localhost:3000](http://localhost:3000) e crie sua conta. As categorias padrão são criadas automaticamente no primeiro cadastro.
+Acesse [https://fyneo.vercel.app](https://fyneo.vercel.app) e crie sua conta. As categorias padrão são criadas automaticamente no primeiro cadastro.
 
 ---
 

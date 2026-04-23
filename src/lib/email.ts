@@ -18,7 +18,7 @@ export async function sendVerificationEmail(
   to: string,
   data: { userName: string; verificationUrl: string }
 ): Promise<boolean> {
-  const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
@@ -140,7 +140,7 @@ export async function sendDueBillEmail(to: string, data: DueBillEmailData): Prom
     data.daysUntilDue === 1 ? `🔴 Vence amanhã — ${data.billName} (${formatCurrency(data.amount)})` :
                               `⏰ ${data.billName} vence em ${data.daysUntilDue} dias — ${formatCurrency(data.amount)}`
 
-  const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
 
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">

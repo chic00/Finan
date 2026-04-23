@@ -49,7 +49,7 @@ export async function sendDueBillTelegram(
     accountName: string
   }
 ): Promise<boolean> {
-  const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+  const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
 
   // Ícone e texto de urgência
   const urgencyIcon =

@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     })
 
     // Envia email de verificação
-    const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
     const verificationUrl = `${appUrl}/api/verify-email?token=${token}`
 
     await sendVerificationEmail(email, {
@@ -97,7 +97,7 @@ async function resendVerification(userId: string, email: string, name: string) {
 
     await db.insert(emailVerifications).values({ userId, token, expiresAt })
 
-    const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
     await sendVerificationEmail(email, {
       userName: name,
       verificationUrl: `${appUrl}/verify-email?token=${token}`,
