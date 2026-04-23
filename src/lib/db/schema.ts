@@ -46,6 +46,19 @@ export const verificationTokens = pgTable('verification_tokens', {
   compoundKey: index('verification_token_key').on(table.identifier, table.token),
 }))
 
+// ─── Email Verifications (cadastro) ───────────────────────────────
+export const emailVerifications = pgTable('email_verifications', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: varchar('token', { length: 255 }).notNull().unique(),
+  expiresAt: timestamp('expires_at').notNull(),
+  usedAt: timestamp('used_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => ({
+  tokenIdx: index('email_verifications_token_idx').on(table.token),
+  userIdIdx: index('email_verifications_user_id_idx').on(table.userId),
+}))
+
 // ─── Bank Accounts ─────────────────────────────────────────────────
 export const bankAccounts = pgTable('bank_accounts', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -96,11 +109,11 @@ export const recurringTransactions = pgTable('recurring_transactions', {
   frequency: varchar('frequency', { length: 20 }).notNull(),
   startDate: timestamp('start_date').notNull(),
   endDate: timestamp('end_date'),
-  nextDueDate: timestamp('next_due_date').notNull(), // próximo vencimento — chave das notificações
+  nextDueDate: timestamp('next_due_date').notNull(),
   lastGenerated: timestamp('last_generated'),
   isActive: boolean('is_active').notNull().default(true),
-  isPaid: boolean('is_paid').notNull().default(false),   // pago no ciclo atual?
-  paidAt: timestamp('paid_at'),                          // quando foi pago
+  isPaid: boolean('is_paid').notNull().default(false),
+  paidAt: timestamp('paid_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 }, (table) => ({
@@ -168,18 +181,11 @@ export const goals = pgTable('goals', {
 export const userNotificationSettings = pgTable('user_notification_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
-
-  // Email
   emailEnabled: boolean('email_enabled').notNull().default(true),
   notificationEmail: varchar('notification_email', { length: 255 }),
-
-  // Telegram (gratuito)
   telegramEnabled: boolean('telegram_enabled').notNull().default(false),
-  telegramChatId: varchar('telegram_chat_id', { length: 50 }), // obtido via /start no bot
-
-  // Dias de antecedência: JSON array ex: [1,2,5,10]
+  telegramChatId: varchar('telegram_chat_id', { length: 50 }),
   reminderDays: text('reminder_days').notNull().default('[1,2,5,10]'),
-
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 })
@@ -213,11 +219,16 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   sessions: many(sessions),
   oauthAccounts: many(accounts),
   recurringTransactions: many(recurringTransactions),
+  emailVerifications: many(emailVerifications),
   notificationSettings: one(userNotificationSettings, {
     fields: [users.id],
     references: [userNotificationSettings.userId],
   }),
   notificationLogs: many(notificationLogs),
+}))
+
+export const emailVerificationsRelations = relations(emailVerifications, ({ one }) => ({
+  user: one(users, { fields: [emailVerifications.userId], references: [users.id] }),
 }))
 
 export const bankAccountsRelations = relations(bankAccounts, ({ one, many }) => ({
@@ -280,3 +291,4 @@ export type Goal = typeof goals.$inferSelect
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect
 export type UserNotificationSettings = typeof userNotificationSettings.$inferSelect
 export type NotificationLog = typeof notificationLogs.$inferSelect
+export type EmailVerification = typeof emailVerifications.$inferSelect

@@ -43,7 +43,8 @@ export default function RegisterPage() {
         return
       }
 
-      router.push('/login?registered=true')
+      // Redireciona para página de verificação passando o email
+      router.push(`/verify-email?email=${encodeURIComponent(form.email)}`)
     } catch {
       setError('Erro ao criar conta')
       setLoading(false)
@@ -65,8 +66,7 @@ export default function RegisterPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--color-primary)_0%,_transparent_50%)] opacity-20" />
-        
-        {/* Grid pattern */}
+
         <div className="absolute inset-0 opacity-5">
           <div className="h-full w-full" style={{
             backgroundImage: 'linear-gradient(var(--color-primary) 1px, transparent 1px), linear-gradient(90deg, var(--color-primary) 1px, transparent 1px)',
@@ -77,11 +77,11 @@ export default function RegisterPage() {
         <div className="relative z-10 flex flex-col justify-between p-12 w-full">
           <div>
             <Link href="/" className="flex items-center">
-              <Image 
-                src="/logo.jpeg" 
-                alt="Fyneo - Organize hoje, cresca amanha" 
-                width={200} 
-                height={80} 
+              <Image
+                src="/logo.jpeg"
+                alt="Fyneo - Organize hoje, cresca amanha"
+                width={200}
+                height={80}
                 className="h-20 w-auto"
                 priority
               />
@@ -109,9 +109,7 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          <p className="text-sm text-muted-foreground">
-            Fyneo 2024. Todos os direitos reservados.
-          </p>
+          <p className="text-sm text-muted-foreground">Fyneo 2024. Todos os direitos reservados.</p>
         </div>
       </div>
 
@@ -121,13 +119,7 @@ export default function RegisterPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden mb-8 text-center">
             <Link href="/" className="inline-flex items-center">
-              <Image 
-                src="/logo.jpeg" 
-                alt="Fyneo" 
-                width={160} 
-                height={64} 
-                className="h-14 w-auto"
-              />
+              <Image src="/logo.jpeg" alt="Fyneo" width={160} height={64} className="h-14 w-auto" />
             </Link>
           </div>
 

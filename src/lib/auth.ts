@@ -1,3 +1,4 @@
+// src/lib/auth.ts
 import NextAuth from 'next-auth'
 import { DrizzleAdapter } from '@auth/drizzle-adapter'
 import Credentials from 'next-auth/providers/credentials'
@@ -38,6 +39,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!isValid) {
           return null
+        }
+
+        // Bloqueia login se email não verificado
+        if (!user.emailVerified) {
+          // Retorna null com uma flag especial via erro customizado
+          throw new Error('EMAIL_NOT_VERIFIED')
         }
 
         return {
