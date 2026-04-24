@@ -5,9 +5,21 @@ import { initDefaultCategories } from '@/actions/categories'
 import { sendVerificationEmail } from '@/lib/email'
 import { randomUUID } from 'crypto'
 import { registerSchema } from '@/lib/validations'
+import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
   try {
+    // SEGURANÇA: Rate Limiting para evitar abusos no registro (máx 5 por hora por IP)
+    const ip = req.headers.get('x-forwarded-for') || 'anonymous'
+    const rl = await rateLimit(`register_${ip}`, 5, 60 * 60 * 1000)
+    
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Muitas tentativas de registro. Tente novamente mais tarde.' },
+        { status: 429 }
+      )
+    }
+
     const body = await req.json()
     
     // SEGURANÇA: Validação robusta usando o schema central (Zod)
