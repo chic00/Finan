@@ -1,4 +1,3 @@
-// src/app/api/register/route.ts
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { db, users, emailVerifications } from '@/lib/db'
@@ -55,8 +54,7 @@ export async function POST(req: Request) {
         password: hashedPassword,
       }).returning()
 
-      // 2. Inicializa categorias padrão (precisa ser adaptado para aceitar tx se possível, 
-      // mas como initDefaultCategories usa o db global, mantemos o fluxo atômico aqui)
+      // 2. Inicializa categorias padrão
       await initDefaultCategories(user.id)
 
       // 3. Gera token de verificação

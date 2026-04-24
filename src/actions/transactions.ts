@@ -1,23 +1,11 @@
 'use server'
 
 import { auth } from '@/lib/auth'
-import { db, transactions, bankAccounts } from '@/lib/db'
+import { db, transactions, bankAccounts, categories } from '@/lib/db'
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { transactionSchema } from '@/lib/validations'
 import { redirect } from 'next/navigation'
-
-// ─── Helper: atualiza saldo de forma atômica (sem race condition) ──
-// Usa SQL direto para fazer balance = balance +/- amount em uma única operação
-async function adjustBalance(accountId: string, delta: number) {
-  await db
-    .update(bankAccounts)
-    .set({
-      balance: sql`${bankAccounts.balance} + ${delta.toString()}`,
-      updatedAt: new Date(),
-    })
-    .where(eq(bankAccounts.id, accountId))
-}
 
 // ─── Helper: calcula o delta de saldo para cada tipo de transação ──
 function getBalanceDeltas(
@@ -51,7 +39,34 @@ export async function createTransaction(formData: unknown) {
     return { error: parsed.error.issues[0].message }
   }
 
+  const userId = session.user.id
+
   try {
+    // SEGURANÇA: Valida se a conta principal pertence ao usuário
+    const account = await db.query.bankAccounts.findFirst({
+      where: and(eq(bankAccounts.id, parsed.data.accountId), eq(bankAccounts.userId, userId))
+    })
+    if (!account) return { error: 'Conta de origem inválida ou não encontrada' }
+
+    // SEGURANÇA: Se for transferência, valida a conta de destino
+    if (parsed.data.type === 'transfer' && parsed.data.toAccountId) {
+      const toAccount = await db.query.bankAccounts.findFirst({
+        where: and(eq(bankAccounts.id, parsed.data.toAccountId), eq(bankAccounts.userId, userId))
+      })
+      if (!toAccount) return { error: 'Conta de destino inválida ou não encontrada' }
+    }
+
+    // SEGURANÇA: Valida se a categoria pertence ao usuário ou é do sistema
+    if (parsed.data.categoryId) {
+      const category = await db.query.categories.findFirst({
+        where: and(
+          eq(categories.id, parsed.data.categoryId),
+          sql`(${categories.userId} = ${userId} OR ${categories.isSystem} = true)`
+        )
+      })
+      if (!category) return { error: 'Categoria inválida ou não encontrada' }
+    }
+
     const deltas = getBalanceDeltas(
       parsed.data.type,
       parsed.data.accountId,
@@ -72,7 +87,7 @@ export async function createTransaction(formData: unknown) {
       }
 
       await tx.insert(transactions).values({
-        userId: session.user!.id!,
+        userId: userId,
         accountId: parsed.data.accountId,
         toAccountId: parsed.data.toAccountId,
         categoryId: parsed.data.categoryId,
@@ -93,7 +108,6 @@ export async function createTransaction(formData: unknown) {
   }
 }
 
-// FIX: reverte saldo antigo e aplica novo de forma atômica
 export async function updateTransaction(id: string, formData: unknown) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
@@ -103,11 +117,13 @@ export async function updateTransaction(id: string, formData: unknown) {
     return { error: parsed.error.issues[0].message }
   }
 
+  const userId = session.user.id
+
   try {
     const existing = await db.query.transactions.findFirst({
       where: and(
         eq(transactions.id, id),
-        eq(transactions.userId, session.user!.id)
+        eq(transactions.userId, userId)
       ),
     })
 
@@ -115,13 +131,35 @@ export async function updateTransaction(id: string, formData: unknown) {
       return { error: 'Transação não encontrada' }
     }
 
-    // Calcula deltas: reverter antiga + aplicar nova
+    // SEGURANÇA: Valida se as novas contas e categorias pertencem ao usuário
+    const account = await db.query.bankAccounts.findFirst({
+      where: and(eq(bankAccounts.id, parsed.data.accountId), eq(bankAccounts.userId, userId))
+    })
+    if (!account) return { error: 'Conta de origem inválida' }
+
+    if (parsed.data.type === 'transfer' && parsed.data.toAccountId) {
+      const toAccount = await db.query.bankAccounts.findFirst({
+        where: and(eq(bankAccounts.id, parsed.data.toAccountId), eq(bankAccounts.userId, userId))
+      })
+      if (!toAccount) return { error: 'Conta de destino inválida' }
+    }
+
+    if (parsed.data.categoryId) {
+      const category = await db.query.categories.findFirst({
+        where: and(
+          eq(categories.id, parsed.data.categoryId),
+          sql`(${categories.userId} = ${userId} OR ${categories.isSystem} = true)`
+        )
+      })
+      if (!category) return { error: 'Categoria inválida' }
+    }
+
     const reverseDeltas = getBalanceDeltas(
       existing.type,
       existing.accountId,
       existing.toAccountId,
       parseFloat(existing.amount as string),
-      true // reverse
+      true
     )
     const newDeltas = getBalanceDeltas(
       parsed.data.type,
@@ -131,7 +169,6 @@ export async function updateTransaction(id: string, formData: unknown) {
     )
 
     await db.transaction(async (tx) => {
-      // 1. Reverte impacto da transação antiga
       for (const { accountId, delta } of reverseDeltas) {
         await tx
           .update(bankAccounts)
@@ -142,7 +179,6 @@ export async function updateTransaction(id: string, formData: unknown) {
           .where(eq(bankAccounts.id, accountId))
       }
 
-      // 2. Aplica impacto da nova transação
       for (const { accountId, delta } of newDeltas) {
         await tx
           .update(bankAccounts)
@@ -153,7 +189,6 @@ export async function updateTransaction(id: string, formData: unknown) {
           .where(eq(bankAccounts.id, accountId))
       }
 
-      // 3. Atualiza o registro
       await tx
         .update(transactions)
         .set({
@@ -200,7 +235,7 @@ export async function deleteTransaction(id: string) {
       transaction.accountId,
       transaction.toAccountId,
       parseFloat(transaction.amount as string),
-      true // reverse
+      true
     )
 
     await db.transaction(async (tx) => {
