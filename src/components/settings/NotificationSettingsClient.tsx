@@ -9,7 +9,7 @@ import {
 } from '@/actions/notifications'
 import {
   Bell, Mail, Send, AlertCircle, CheckCircle,
-  Loader2, Info, ExternalLink,
+  Loader2, Info, ExternalLink, Copy, Check
 } from 'lucide-react'
 import type { UserNotificationSettings } from '@/lib/db/schema'
 
@@ -59,6 +59,7 @@ export function NotificationSettingsClient({ settings, userEmail }: Props) {
   const [testLoading, setTestLoading] = useState<'email' | 'telegram' | null>(null)
   const [fetchingChatId, setFetchingChatId] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const [form, setForm] = useState({
     emailEnabled: settings?.emailEnabled ?? true,
@@ -110,6 +111,17 @@ export function NotificationSettingsClient({ settings, userEmail }: Props) {
       showFeedback('success', `Chat ID encontrado: ${result.chatId}`)
     }
   }
+
+  const copyToken = () => {
+    if (settings?.telegramVerificationToken) {
+      navigator.clipboard.writeText(settings.telegramVerificationToken)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
+  }
+
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'finan_alertas_bot'
+  const botLink = `https://t.me/${botUsername}?start=${settings?.telegramVerificationToken || ''}`
 
   return (
     <div className="space-y-8 max-w-xl">
@@ -226,7 +238,7 @@ export function NotificationSettingsClient({ settings, userEmail }: Props) {
                 <p className="text-sm font-semibold flex items-center gap-1" style={{ color: 'var(--color-primary)' }}>
                   <Info size={14} /> Como configurar (1 minuto)
                 </p>
-                <ol className="text-sm space-y-2 list-none" style={{ color: 'var(--color-foreground)' }}>
+                <ol className="text-sm space-y-3 list-none" style={{ color: 'var(--color-foreground)' }}>
                   <li className="flex items-start gap-2">
                     <span
                       className="rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5"
@@ -234,10 +246,10 @@ export function NotificationSettingsClient({ settings, userEmail }: Props) {
                     >1</span>
                     <span style={{ color: 'var(--color-muted-foreground)' }}>
                       Abra o Telegram e pesquise por{' '}
-                      <strong style={{ color: 'var(--color-foreground)' }}>@{process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'seu_bot'}</strong>
+                      <strong style={{ color: 'var(--color-foreground)' }}>@{botUsername}</strong>
                       {' '}ou clique:{' '}
                       <a
-                        href={`https://t.me/${process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'seu_bot'}`}
+                        href={botLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 underline font-medium"
@@ -252,9 +264,26 @@ export function NotificationSettingsClient({ settings, userEmail }: Props) {
                       className="rounded-full w-5 h-5 flex items-center justify-center text-xs flex-shrink-0 mt-0.5"
                       style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-primary-foreground)' }}
                     >2</span>
-                    <span style={{ color: 'var(--color-muted-foreground)' }}>
-                      Envie o comando <strong style={{ color: 'var(--color-foreground)' }}>/start</strong> para o bot
-                    </span>
+                    <div className="flex-1 space-y-2">
+                      <span style={{ color: 'var(--color-muted-foreground)' }}>
+                        Envie seu <strong>Código de Verificação</strong> para o bot:
+                      </span>
+                      {settings?.telegramVerificationToken && (
+                        <div className="flex items-center gap-2">
+                          <code className="px-2 py-1 rounded bg-black/20 font-mono text-xs border border-white/10">
+                            {settings.telegramVerificationToken}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={copyToken}
+                            className="p-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                            title="Copiar código"
+                          >
+                            {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </li>
                   <li className="flex items-start gap-2">
                     <span
