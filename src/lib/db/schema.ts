@@ -185,6 +185,7 @@ export const userNotificationSettings = pgTable('user_notification_settings', {
   notificationEmail: varchar('notification_email', { length: 255 }),
   telegramEnabled: boolean('telegram_enabled').notNull().default(false),
   telegramChatId: varchar('telegram_chat_id', { length: 50 }),
+  telegramVerificationToken: varchar('telegram_verification_token', { length: 100 }),
   reminderDays: text('reminder_days').notNull().default('[1,2,5,10]'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

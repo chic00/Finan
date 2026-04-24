@@ -6,6 +6,7 @@ import { eq } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import { randomUUID } from 'crypto'
 
 const settingsSchema = z.object({
   emailEnabled: z.boolean().default(true),
@@ -66,9 +67,41 @@ export async function getNotificationSettings() {
   const session = await auth()
   if (!session?.user?.id) return null
 
-  return db.query.userNotificationSettings.findFirst({
+  let settings = await db.query.userNotificationSettings.findFirst({
     where: eq(userNotificationSettings.userId, session.user!.id),
   })
+
+  // SEGURANÇA: Se não houver token de verificação, gera um agora
+  if (settings && !settings.telegramVerificationToken) {
+    const token = `verify_${randomUUID().replace(/-/g, '')}`
+    await db.update(userNotificationSettings)
+      .set({ telegramVerificationToken: token })
+      .where(eq(userNotificationSettings.userId, session.user!.id))
+    settings.telegramVerificationToken = token
+  }
+
+  return settings
+}
+
+export async function generateTelegramToken() {
+  const session = await auth()
+  if (!session?.user?.id) redirect('/login')
+
+  const token = `verify_${randomUUID().replace(/-/g, '')}`
+  
+  await db.insert(userNotificationSettings)
+    .values({
+      userId: session.user!.id,
+      telegramVerificationToken: token,
+      reminderDays: '[1,2,5,10]'
+    })
+    .onConflictDoUpdate({
+      target: userNotificationSettings.userId,
+      set: { telegramVerificationToken: token }
+    })
+
+  revalidatePath('/dashboard/configuracoes')
+  return { token }
 }
 
 export async function sendTestNotification(channel: 'email' | 'telegram') {
@@ -109,10 +142,18 @@ export async function sendTestNotification(channel: 'email' | 'telegram') {
   return { error: 'Canal inválido' }
 }
 
-// ─── Busca o Chat ID do usuário via bot ────────────────────────────
+// ─── Busca o Chat ID do usuário via bot de forma SEGURA ────────────────
 export async function fetchTelegramChatId(): Promise<{ chatId?: string; error?: string }> {
+  const session = await auth()
+  if (!session?.user?.id) return { error: 'Não autenticado' }
+
   if (!process.env.TELEGRAM_BOT_TOKEN) {
     return { error: 'TELEGRAM_BOT_TOKEN não configurado no .env' }
+  }
+
+  const settings = await getNotificationSettings()
+  if (!settings?.telegramVerificationToken) {
+    return { error: 'Token de verificação não gerado. Tente novamente.' }
   }
 
   try {
@@ -122,17 +163,26 @@ export async function fetchTelegramChatId(): Promise<{ chatId?: string; error?: 
     const data = await response.json()
 
     if (!data.ok || data.result.length === 0) {
-      return { error: 'Nenhuma mensagem recebida ainda. Envie /start para o bot primeiro.' }
+      return { error: 'Nenhuma mensagem recebida ainda. Envie o código para o bot primeiro.' }
     }
 
-    // Pega o chat_id da mensagem mais recente
-    const lastUpdate = data.result[data.result.length - 1]
-    const chatId = String(lastUpdate.message?.chat?.id || '')
+    // SEGURANÇA: Busca uma mensagem que contenha o TOKEN ÚNICO do usuário
+    const userUpdate = data.result.find((update: any) => 
+      update.message?.text?.includes(settings.telegramVerificationToken)
+    )
 
-    if (!chatId) {
-      return { error: 'Chat ID não encontrado. Envie /start para o bot e tente novamente.' }
+    if (!userUpdate) {
+      return { error: 'Código de verificação não encontrado nas mensagens recentes. Envie o código para o bot e tente novamente.' }
     }
 
+    const chatId = String(userUpdate.message.chat.id)
+
+    // Salva o Chat ID automaticamente
+    await db.update(userNotificationSettings)
+      .set({ telegramChatId: chatId, updatedAt: new Date() })
+      .where(eq(userNotificationSettings.userId, session.user!.id))
+
+    revalidatePath('/dashboard/configuracoes')
     return { chatId }
   } catch {
     return { error: 'Erro ao conectar com a API do Telegram' }
