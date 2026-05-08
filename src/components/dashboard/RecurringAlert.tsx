@@ -20,7 +20,7 @@ interface RecurringAlertProps {
 function daysUntil(date: Date): number {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const due   = new Date(date); due.setHours(0, 0, 0, 0)
-  return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 60 * 24))
+  return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
 function daysLabel(days: number, isPaid: boolean): { text: string; color: string } {
