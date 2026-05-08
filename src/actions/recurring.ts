@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { calculateNextDueDate } from '@/lib/recurringUtils'
+import { calculateNextDueDate, shouldResetPaid } from '@/lib/recurringUtils'
 
 const recurringSchema = z.object({
   accountId: z.string().uuid('Conta é obrigatória'),
@@ -25,15 +25,6 @@ const recurringSchema = z.object({
 })
 
 // ─── Toggle Pago / Não Pago ────────────────────────────────────────
-// ✅ Ao MARCAR PAGO:
-//   1. Cria uma transação real em `transactions` (afeta saldo da conta)
-//   2. Avança nextDueDate para o próximo ciclo
-//   3. Marca isPaid = true, salva paidAt
-//
-// ✅ Ao DESMARCAR (Desfazer):
-//   1. Remove a transação gerada (se existir)
-//   2. Restaura nextDueDate para o ciclo atual
-//   3. Marca isPaid = false, limpa paidAt
 export async function togglePaid(id: string) {
   const session = await auth()
   if (!session?.user?.id) redirect('/login')
@@ -49,8 +40,6 @@ export async function togglePaid(id: string) {
 
   // ── DESMARCAR PAGO ─────────────────────────────────────────────
   if (recurring.isPaid) {
-    // Remove a transação gerada por esta recorrente no ciclo atual (se existir)
-    // Identificada pelo recurringId + data próxima ao paidAt
     if (recurring.paidAt) {
       const existingTx = await db.query.transactions.findFirst({
         where: and(
@@ -62,7 +51,6 @@ export async function togglePaid(id: string) {
       })
 
       if (existingTx) {
-        // Reverte o saldo da conta
         const account = await db.query.bankAccounts.findFirst({
           where: eq(bankAccounts.id, existingTx.accountId),
         })
@@ -82,7 +70,6 @@ export async function togglePaid(id: string) {
       }
     }
 
-    // Restaura nextDueDate para o ciclo atual
     const restoredDueDate = calculateNextDueDate(
       new Date(recurring.startDate),
       recurring.frequency
@@ -102,15 +89,6 @@ export async function togglePaid(id: string) {
   // ── MARCAR PAGO ────────────────────────────────────────────────
   const now = new Date()
 
-  // 1. Verifica saldo se for despesa
-  if (recurring.type === 'expense') {
-    const account = await db.query.bankAccounts.findFirst({
-      where: eq(bankAccounts.id, recurring.accountId),
-    })
-    if (!account) return { error: 'Conta bancária não encontrada' }
-  }
-
-  // 2. Cria a transação real
   const account = await db.query.bankAccounts.findFirst({
     where: eq(bankAccounts.id, recurring.accountId),
   })
@@ -122,12 +100,10 @@ export async function togglePaid(id: string) {
     ? currentBalance + amount
     : currentBalance - amount
 
-  // Atualiza saldo da conta
   await db.update(bankAccounts)
     .set({ balance: newBalance.toString() })
     .where(eq(bankAccounts.id, recurring.accountId))
 
-  // Insere transação
   await db.insert(transactions).values({
     userId:      session.user!.id,
     accountId:   recurring.accountId,
@@ -140,7 +116,7 @@ export async function togglePaid(id: string) {
     recurringId: id,
   })
 
-  // 3. Avança nextDueDate para o próximo ciclo
+  // Avança nextDueDate para o próximo ciclo
   const currentDue = new Date(recurring.nextDueDate)
   const next = new Date(currentDue)
   switch (recurring.frequency) {
@@ -150,7 +126,6 @@ export async function togglePaid(id: string) {
     case 'yearly':  next.setFullYear(next.getFullYear() + 1); break
   }
 
-  // Verifica se encerrou
   const finished = !!(recurring.endDate && next > new Date(recurring.endDate))
 
   await db.update(recurringTransactions)
@@ -171,7 +146,6 @@ export async function togglePaid(id: string) {
   return { success: true, isPaid: true, finished }
 }
 
-// Mantido por compatibilidade
 export async function advanceNextDueDate(id: string) {
   return togglePaid(id)
 }
@@ -302,9 +276,33 @@ export async function getRecurringTransactions() {
   const session = await auth()
   if (!session?.user?.id) return []
 
-  return db.query.recurringTransactions.findMany({
+  const items = await db.query.recurringTransactions.findMany({
     where: eq(recurringTransactions.userId, session.user!.id),
     with: { account: true, category: true },
     orderBy: (r, { asc }) => [asc(r.nextDueDate)],
   })
+
+  // ── Auto-reset: se isPaid=true mas o paidAt é de um ciclo anterior
+  // ao nextDueDate atual, reseta silenciosamente no banco ─────────
+  const toReset = items.filter(r =>
+    shouldResetPaid(new Date(r.nextDueDate), r.paidAt ? new Date(r.paidAt) : null, r.isPaid)
+  )
+
+  if (toReset.length > 0) {
+    await Promise.all(
+      toReset.map(r =>
+        db.update(recurringTransactions)
+          .set({ isPaid: false, paidAt: null, updatedAt: new Date() })
+          .where(eq(recurringTransactions.id, r.id))
+      )
+    )
+    // Retorna os dados já corrigidos
+    return items.map(r =>
+      toReset.find(x => x.id === r.id)
+        ? { ...r, isPaid: false, paidAt: null }
+        : r
+    )
+  }
+
+  return items
 }
