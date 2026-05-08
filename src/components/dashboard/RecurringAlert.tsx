@@ -20,7 +20,16 @@ interface RecurringAlertProps {
 function daysUntil(date: Date): number {
   const today = new Date(); today.setHours(0, 0, 0, 0)
   const due   = new Date(date); due.setHours(0, 0, 0, 0)
-  return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+  return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 60 * 24))
+}
+
+function daysLabel(days: number, isPaid: boolean): { text: string; color: string } {
+  if (isPaid)     return { text: 'Pago',              color: 'var(--color-success)' }
+  if (days < 0)   return { text: `Vencida há ${Math.abs(days)}d`, color: 'var(--color-destructive)' }
+  if (days === 0) return { text: 'Vence hoje!',       color: 'var(--color-destructive)' }
+  if (days === 1) return { text: 'Vence amanhã',      color: 'var(--color-warning)' }
+  if (days <= 5)  return { text: `Vence em ${days}d`, color: 'var(--color-warning)' }
+  return               { text: formatDate(new Date()),  color: 'var(--color-muted-foreground)' }
 }
 
 export function RecurringAlert({ items }: RecurringAlertProps) {
@@ -37,99 +46,181 @@ export function RecurringAlert({ items }: RecurringAlertProps) {
   const unpaid  = items.filter((i) => !i.isPaid)
   const overdue = unpaid.filter((i) => daysUntil(new Date(i.nextDueDate)) < 0)
 
+  const sorted = items
+    .slice()
+    .sort((a, b) => {
+      if (a.isPaid !== b.isPaid) return a.isPaid ? 1 : -1
+      return new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime()
+    })
+    .slice(0, 6)
+
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-lg shadow-black/5 overflow-hidden">
+    <div
+      className="rounded-2xl overflow-hidden"
+      style={{
+        backgroundColor: 'var(--color-card)',
+        border: '1px solid var(--color-border)',
+        boxShadow: 'var(--shadow-card)',
+      }}
+    >
       {/* Header */}
-      <div className="px-6 py-4 border-b border-border flex items-center justify-between">
+      <div
+        className="px-6 py-4 flex items-center justify-between"
+        style={{ borderBottom: '1px solid var(--color-border)' }}
+      >
         <div className="flex items-center gap-2">
-          <RefreshCw size={18} className="text-primary" />
-          <h3 className="font-semibold text-foreground">Contas Recorrentes — este mes</h3>
+          <RefreshCw size={18} style={{ color: 'var(--color-primary)' }} />
+          <h3 className="font-semibold" style={{ color: 'var(--color-foreground)' }}>
+            Contas Recorrentes — este mês
+          </h3>
           {overdue.length > 0 && (
-            <span className="flex items-center gap-1 text-xs font-semibold text-destructive bg-destructive/10 border border-destructive/20 px-2 py-0.5 rounded-full">
+            <span
+              className="flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full"
+              style={{
+                color: 'var(--color-destructive)',
+                backgroundColor: 'color-mix(in srgb, var(--color-destructive) 12%, transparent)',
+                border: '1px solid color-mix(in srgb, var(--color-destructive) 25%, transparent)',
+              }}
+            >
               <AlertTriangle size={11} />
               {overdue.length} vencida{overdue.length > 1 ? 's' : ''}
             </span>
           )}
         </div>
-        <Link href="/dashboard/recorrentes"
-          className="text-sm text-primary hover:text-primary/80 flex items-center gap-1 transition-colors">
+        <Link
+          href="/dashboard/recorrentes"
+          className="text-sm flex items-center gap-1 transition-colors"
+          style={{ color: 'var(--color-primary)' }}
+        >
           Ver todas <ArrowRight size={14} />
         </Link>
       </div>
 
-      {/* Resumo financeiro */}
-      <div className="grid grid-cols-3 divide-x divide-border border-b border-border">
-        <div className="px-5 py-3">
-          <p className="text-xs text-muted-foreground">Total despesas</p>
-          <p className="text-base font-bold text-destructive">{formatCurrency(totalExpense)}</p>
-        </div>
-        <div className="px-5 py-3">
-          <p className="text-xs text-muted-foreground">Total receitas</p>
-          <p className="text-base font-bold text-success">{formatCurrency(totalIncome)}</p>
-        </div>
-        <div className="px-5 py-3">
-          <p className="text-xs text-muted-foreground">Pendentes</p>
-          <p className="text-base font-bold text-warning">{unpaid.length} de {items.length}</p>
-        </div>
+      {/* Sumário financeiro */}
+      <div
+        className="grid grid-cols-3 divide-x"
+        style={{
+          borderBottom: '1px solid var(--color-border)',
+          borderColor: 'var(--color-border)',
+        }}
+      >
+        {[
+          {
+            label: 'Total despesas',
+            value: formatCurrency(totalExpense),
+            color: 'var(--color-destructive)',
+          },
+          {
+            label: 'Total receitas',
+            value: formatCurrency(totalIncome),
+            color: 'var(--color-success)',
+          },
+          {
+            label: 'Pendentes',
+            value: `${unpaid.length} de ${items.length}`,
+            color: unpaid.length > 0 ? 'var(--color-warning)' : 'var(--color-success)',
+          },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="px-5 py-3"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+              {stat.label}
+            </p>
+            <p className="text-base font-bold" style={{ color: stat.color }}>
+              {stat.value}
+            </p>
+          </div>
+        ))}
       </div>
 
-      {/* Lista de itens (max 5, ordenados por urgencia) */}
-      <div className="divide-y divide-border">
-        {items
-          .slice()
-          .sort((a, b) => {
-            // Nao pagas primeiro, depois por data
-            if (a.isPaid !== b.isPaid) return a.isPaid ? 1 : -1
-            return new Date(a.nextDueDate).getTime() - new Date(b.nextDueDate).getTime()
-          })
-          .slice(0, 6)
-          .map((item) => {
-            const days  = daysUntil(new Date(item.nextDueDate))
-            const isLate = !item.isPaid && days < 0
+      {/* Lista de itens */}
+      <div>
+        {sorted.map((item, i) => {
+          const days  = daysUntil(new Date(item.nextDueDate))
+          const label = daysLabel(days, item.isPaid)
+          const isLate = !item.isPaid && days < 0
+          const isExpense = item.type === 'expense'
 
-            return (
-              <div key={item.id}
-                className={`flex items-center justify-between px-6 py-3 ${
-                  isLate ? 'bg-destructive/5' : ''
-                }`}>
-                <div className="flex items-center gap-3 min-w-0">
-                  {item.isPaid
-                    ? <CheckCircle2 size={16} className="text-success shrink-0" />
-                    : <Circle      size={16} className={`shrink-0 ${isLate ? 'text-destructive' : 'text-muted-foreground'}`} />
-                  }
-                  <div className="min-w-0">
-                    <p className={`text-sm font-medium truncate ${item.isPaid ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
-                      {item.description || 'Sem descricao'}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {item.category?.name || '—'} ·{' '}
-                      {item.isPaid
-                        ? <span className="text-success font-medium">Pago</span>
-                        : days < 0
-                          ? <span className="text-destructive font-medium">Vencida ha {Math.abs(days)} dia{Math.abs(days) > 1 ? 's' : ''}</span>
-                          : days === 0
-                            ? <span className="text-destructive font-medium">Vence hoje</span>
-                            : <span>Vence em {days} dia{days > 1 ? 's' : ''} — {formatDate(new Date(item.nextDueDate))}</span>
-                      }
-                    </p>
-                  </div>
+          return (
+            <div
+              key={item.id}
+              className="flex items-center justify-between px-6 py-3 transition-colors"
+              style={{
+                borderBottom: i < sorted.length - 1 ? '1px solid var(--color-border)' : 'none',
+                backgroundColor: isLate
+                  ? 'color-mix(in srgb, var(--color-destructive) 5%, transparent)'
+                  : 'transparent',
+              }}
+            >
+              {/* Left: icon + info */}
+              <div className="flex items-center gap-3 min-w-0">
+                {item.isPaid ? (
+                  <CheckCircle2
+                    size={16}
+                    className="flex-shrink-0"
+                    style={{ color: 'var(--color-success)' }}
+                  />
+                ) : (
+                  <Circle
+                    size={16}
+                    className="flex-shrink-0"
+                    style={{ color: isLate ? 'var(--color-destructive)' : 'var(--color-muted-foreground)' }}
+                  />
+                )}
+                <div className="min-w-0">
+                  <p
+                    className="text-sm font-medium truncate"
+                    style={{
+                      color: item.isPaid
+                        ? 'var(--color-muted-foreground)'
+                        : 'var(--color-foreground)',
+                      textDecoration: item.isPaid ? 'line-through' : 'none',
+                    }}
+                  >
+                    {item.description || 'Sem descrição'}
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                    {item.category?.name || '—'}
+                    {' · '}
+                    <span style={{ color: label.color, fontWeight: 500 }}>
+                      {label.text}
+                    </span>
+                  </p>
                 </div>
-                <p className={`text-sm font-bold shrink-0 ml-4 ${
-                  item.isPaid
-                    ? 'text-muted-foreground'
-                    : item.type === 'expense' ? 'text-destructive' : 'text-success'
-                }`}>
-                  {item.type === 'income' ? '+' : '-'}{formatCurrency(parseFloat(item.amount))}
-                </p>
               </div>
-            )
-          })}
+
+              {/* Right: amount */}
+              <p
+                className="text-sm font-bold flex-shrink-0 ml-4"
+                style={{
+                  color: item.isPaid
+                    ? 'var(--color-muted-foreground)'
+                    : isExpense
+                      ? 'var(--color-destructive)'
+                      : 'var(--color-success)',
+                }}
+              >
+                {isExpense ? '-' : '+'}{formatCurrency(parseFloat(item.amount))}
+              </p>
+            </div>
+          )
+        })}
       </div>
 
+      {/* Ver mais */}
       {items.length > 6 && (
-        <div className="px-6 py-3 border-t border-border text-center">
-          <Link href="/dashboard/recorrentes"
-            className="text-sm text-primary hover:text-primary/80 transition-colors">
+        <div
+          className="px-6 py-3 text-center"
+          style={{ borderTop: '1px solid var(--color-border)' }}
+        >
+          <Link
+            href="/dashboard/recorrentes"
+            className="text-sm transition-colors"
+            style={{ color: 'var(--color-primary)' }}
+          >
             Ver mais {items.length - 6} conta{items.length - 6 > 1 ? 's' : ''}
           </Link>
         </div>

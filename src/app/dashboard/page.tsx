@@ -20,7 +20,9 @@ export default async function DashboardPage() {
   const monthEnd   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
 
   const [accounts, monthlyTransactions, budgetAlerts, recurringThisMonth] = await Promise.all([
-    db.query.bankAccounts.findMany({ where: eq(bankAccounts.userId, userId) }),
+    db.query.bankAccounts.findMany({
+      where: eq(bankAccounts.userId, userId),
+    }),
     db.query.transactions.findMany({
       where: and(
         eq(transactions.userId, userId),
@@ -32,23 +34,50 @@ export default async function DashboardPage() {
     }),
     checkBudgetAlerts(now.getMonth() + 1, now.getFullYear()),
     db.query.recurringTransactions.findMany({
-      where: and(eq(recurringTransactions.userId, userId), eq(recurringTransactions.isActive, true)),
+      where: and(
+        eq(recurringTransactions.userId, userId),
+        eq(recurringTransactions.isActive, true),
+      ),
       with: { category: true, account: true },
       orderBy: (r, { asc }) => [asc(r.nextDueDate)],
     }),
   ])
 
+  // ── Recorrentes relevantes para o mês atual ───────────────────────
+  // Inclui: vencimento neste mês OU vencidas e não pagas de meses anteriores
   const relevantRecurring = recurringThisMonth.filter((r) => {
     const due = new Date(r.nextDueDate)
-    const isThisMonth = due >= monthStart && due <= monthEnd
+    const dueMonth = due.getMonth()
+    const dueYear  = due.getFullYear()
+    const isThisMonth    = dueMonth === now.getMonth() && dueYear === now.getFullYear()
     const isOverdueUnpaid = due < monthStart && !r.isPaid
     return isThisMonth || isOverdueUnpaid
   })
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + parseFloat(acc.balance as string), 0)
-  const monthlyIncome = monthlyTransactions.filter((t) => t.type === 'income').reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
-  const monthlyExpense = monthlyTransactions.filter((t) => t.type === 'expense').reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
+  // ── KPIs ──────────────────────────────────────────────────────────
+  // Saldo total: soma dos saldos das contas bancárias (fonte da verdade)
+  const totalBalance = accounts.reduce(
+    (sum, acc) => sum + parseFloat(acc.balance as string),
+    0
+  )
 
+  // Receitas do mês: transações reais registradas
+  const monthlyIncome = monthlyTransactions
+    .filter((t) => t.type === 'income')
+    .reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
+
+  // Despesas do mês: transações reais registradas (inclui recorrentes pagas via togglePaid)
+  const monthlyExpense = monthlyTransactions
+    .filter((t) => t.type === 'expense')
+    .reduce((sum, t) => sum + parseFloat(t.amount as string), 0)
+
+  // Despesas recorrentes do mês atual que ainda NÃO foram pagas (projetadas)
+  // Serve apenas para mostrar o que ainda está pendente
+  const pendingRecurringExpense = relevantRecurring
+    .filter((r) => r.type === 'expense' && !r.isPaid)
+    .reduce((sum, r) => sum + parseFloat(r.amount as string), 0)
+
+  // Despesas por categoria (apenas transações reais)
   const expensesByCategory = monthlyTransactions
     .filter((t) => t.type === 'expense')
     .reduce((acc, t) => {
@@ -59,73 +88,127 @@ export default async function DashboardPage() {
       return acc
     }, {} as Record<string, { amount: number; color: string }>)
 
-  const MONTHS = ['Janeiro','Fevereiro','Marco','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro']
+  const MONTHS = [
+    'Janeiro','Fevereiro','Marco','Abril','Maio','Junho',
+    'Julho','Agosto','Setembro','Outubro','Novembro','Dezembro',
+  ]
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-foreground)' }}>Dashboard</h1>
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--color-foreground)' }}>
+          Dashboard
+        </h1>
         <p className="mt-1 text-sm" style={{ color: 'var(--color-muted-foreground)' }}>
-          {MONTHS[now.getMonth()]} {now.getFullYear()} — visao geral das suas financas
+          {MONTHS[now.getMonth()]} {now.getFullYear()} — visão geral das suas finanças
         </p>
       </div>
 
       {budgetAlerts.length > 0 && <BudgetAlerts alerts={budgetAlerts} />}
 
-      {/* KPI Cards — sem bordas Tailwind hardcoded */}
+      {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
         {/* Saldo Total */}
-        <div className="rounded-2xl p-5 transition-all"
-          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+        <div
+          className="rounded-2xl p-5 transition-all"
+          style={{
+            backgroundColor: 'var(--color-card)',
+            border: '1px solid var(--color-border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Saldo Total</p>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>
+              Saldo Total
+            </p>
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-primary) 15%, transparent)' }}
+            >
               <Wallet size={16} style={{ color: 'var(--color-primary)' }} />
             </div>
           </div>
-          <p className="text-2xl font-bold" style={{ color: totalBalance >= 0 ? 'var(--color-foreground)' : 'var(--color-destructive)' }}>
+          <p
+            className="text-2xl font-bold"
+            style={{ color: totalBalance >= 0 ? 'var(--color-foreground)' : 'var(--color-destructive)' }}
+          >
             {formatCurrency(totalBalance)}
           </p>
-          <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>{accounts.length} conta(s) ativas</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
+            {accounts.length} conta(s) · saldo real atual
+          </p>
         </div>
 
-        {/* Receitas */}
-        <div className="rounded-2xl p-5 transition-all"
-          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+        {/* Receitas do Mês */}
+        <div
+          className="rounded-2xl p-5 transition-all"
+          style={{
+            backgroundColor: 'var(--color-card)',
+            border: '1px solid var(--color-border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Receitas do Mes</p>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 15%, transparent)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>
+              Receitas do Mês
+            </p>
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-success) 15%, transparent)' }}
+            >
               <TrendingUp size={16} style={{ color: 'var(--color-success)' }} />
             </div>
           </div>
-          <p className="text-2xl font-bold" style={{ color: 'var(--color-success)' }}>{formatCurrency(monthlyIncome)}</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--color-success)' }}>
+            {formatCurrency(monthlyIncome)}
+          </p>
           <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
-            {monthlyTransactions.filter((t) => t.type === 'income').length} transacoes
+            {monthlyTransactions.filter((t) => t.type === 'income').length} transação(ões) registrada(s)
           </p>
         </div>
 
-        {/* Despesas */}
-        <div className="rounded-2xl p-5 transition-all"
-          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-card)' }}>
+        {/* Despesas do Mês */}
+        <div
+          className="rounded-2xl p-5 transition-all"
+          style={{
+            backgroundColor: 'var(--color-card)',
+            border: '1px solid var(--color-border)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
           <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>Despesas do Mes</p>
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center"
-              style={{ backgroundColor: 'color-mix(in srgb, var(--color-destructive) 15%, transparent)' }}>
+            <p className="text-sm font-medium" style={{ color: 'var(--color-muted-foreground)' }}>
+              Despesas do Mês
+            </p>
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center"
+              style={{ backgroundColor: 'color-mix(in srgb, var(--color-destructive) 15%, transparent)' }}
+            >
               <TrendingDown size={16} style={{ color: 'var(--color-destructive)' }} />
             </div>
           </div>
-          <p className="text-2xl font-bold" style={{ color: 'var(--color-destructive)' }}>{formatCurrency(monthlyExpense)}</p>
+          <p className="text-2xl font-bold" style={{ color: 'var(--color-destructive)' }}>
+            {formatCurrency(monthlyExpense)}
+          </p>
           <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
-            {monthlyTransactions.filter((t) => t.type === 'expense').length} transacoes
+            {monthlyTransactions.filter((t) => t.type === 'expense').length} transação(ões) ·{' '}
+            {pendingRecurringExpense > 0 && (
+              <span style={{ color: 'var(--color-warning)' }}>
+                +{formatCurrency(pendingRecurringExpense)} pendente
+              </span>
+            )}
+            {pendingRecurringExpense === 0 && 'sem pendências'}
           </p>
         </div>
       </div>
 
-      {relevantRecurring.length > 0 && <RecurringAlert items={relevantRecurring} />}
+      {/* Bloco de recorrentes do mês */}
+      {relevantRecurring.length > 0 && (
+        <RecurringAlert items={relevantRecurring} />
+      )}
 
-      {/* Charts */}
+      {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
@@ -146,10 +229,10 @@ export default async function DashboardPage() {
         </Card>
       </div>
 
-      {/* Recent Transactions */}
+      {/* Transações recentes */}
       <Card>
         <CardHeader>
-          <CardTitle>Transacoes Recentes</CardTitle>
+          <CardTitle>Transações Recentes</CardTitle>
         </CardHeader>
         <CardContent>
           <RecentTransactions transactions={monthlyTransactions.slice(0, 10)} />
