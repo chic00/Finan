@@ -70,10 +70,6 @@ function daysUntil(date: Date): number {
   return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-function isSameMonth(date: Date, refMonth: number, refYear: number): boolean {
-  const d = new Date(date)
-  return d.getMonth() === refMonth && d.getFullYear() === refYear
-}
 
 function dueBadgeStyle(days: number, isPaid: boolean): { label: string; color: string; bg: string } {
   if (isPaid) return { label: 'Pago', color: 'var(--color-success)', bg: 'color-mix(in srgb, var(--color-success) 15%, transparent)' }
@@ -137,22 +133,26 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
   const active = recorrentes.filter(r => r.isActive)
   const paused = recorrentes.filter(r => !r.isActive)
 
+  // Mês atual: vencimento em maio/2026 OU vencidas não pagas de meses anteriores
+  // → allowPay = true (pode pagar a qualquer momento do mês)
   const currentMonthItems = active.filter(r => {
     const due = new Date(r.nextDueDate)
-    const isThisMonth = isSameMonth(due, currentMonth, currentYear)
-    // Também inclui vencidas não pagas de meses anteriores
+    const isThisMonth     = due.getMonth() === currentMonth && due.getFullYear() === currentYear
     const isOverdueUnpaid = due < new Date(currentYear, currentMonth, 1) && !r.isPaid
     return isThisMonth || isOverdueUnpaid
   })
 
+  // Próximo mês: vencimento exatamente no mês seguinte
+  // → allowPay = false (ainda não é hora de pagar)
   const nextMonthItems = active.filter(r => {
     const due = new Date(r.nextDueDate)
-    return isSameMonth(due, nextMonth, nextYear)
+    return due.getMonth() === nextMonth && due.getFullYear() === nextYear
   })
 
+  // Futuros: tudo além do próximo mês
   const futureItems = active.filter(r => {
     const due = new Date(r.nextDueDate)
-    const monthDiff = (due.getFullYear() - currentYear) * 12 + due.getMonth() - currentMonth
+    const monthDiff = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth)
     return monthDiff > 1
   })
 
