@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import type { BankAccount, Category } from '@/lib/db/schema'
 
 interface RecurringWithRelations {
@@ -64,9 +65,17 @@ const frequencyLabel: Record<string, string> = {
   daily: 'Diária', weekly: 'Semanal', monthly: 'Mensal', yearly: 'Anual',
 }
 
+// Força meio-dia local para evitar bug de timezone (UTC vs local)
+function toLocalNoon(date: Date): Date {
+  const d = new Date(date)
+  d.setHours(12, 0, 0, 0)
+  return d
+}
+
 function daysUntil(date: Date): number {
   const today = new Date(); today.setHours(0, 0, 0, 0)
-  const due   = new Date(date); due.setHours(0, 0, 0, 0)
+  const due   = toLocalNoon(date)
+  due.setHours(0, 0, 0, 0)
   return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
@@ -116,12 +125,14 @@ function SectionHeader({
 
 export function RecorrentesClient({ recorrentes, accounts, categories }: Props) {
   const router = useRouter()
-  const [showModal, setShowModal]   = useState(false)
-  const [editingId, setEditingId]   = useState<string | null>(null)
-  const [loading, setLoading]       = useState(false)
-  const [togglingId, setTogglingId] = useState<string | null>(null)
-  const [error, setError]           = useState('')
-  const [form, setForm]             = useState<FormState>(defaultForm(accounts[0]?.id))
+  const [showModal, setShowModal]     = useState(false)
+  const [editingId, setEditingId]     = useState<string | null>(null)
+  const [loading, setLoading]         = useState(false)
+  const [togglingId, setTogglingId]   = useState<string | null>(null)
+  const [deletingId, setDeletingId]   = useState<string | null>(null)  // id pendente de exclusão
+  const [deleteLoading, setDeleteLoading] = useState(false)
+  const [error, setError]             = useState('')
+  const [form, setForm]               = useState<FormState>(defaultForm(accounts[0]?.id))
 
   const now = new Date()
   const currentMonth = now.getMonth()
@@ -129,29 +140,24 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
   const nextMonth    = currentMonth === 11 ? 0 : currentMonth + 1
   const nextYear     = currentMonth === 11 ? currentYear + 1 : currentYear
 
-  // Separação em grupos
+  // Separação em grupos — usa toLocalNoon para evitar bug de timezone
   const active = recorrentes.filter(r => r.isActive)
   const paused = recorrentes.filter(r => !r.isActive)
 
-  // Mês atual: vencimento em maio/2026 OU vencidas não pagas de meses anteriores
-  // → allowPay = true (pode pagar a qualquer momento do mês)
   const currentMonthItems = active.filter(r => {
-    const due = new Date(r.nextDueDate)
+    const due = toLocalNoon(new Date(r.nextDueDate))
     const isThisMonth     = due.getMonth() === currentMonth && due.getFullYear() === currentYear
     const isOverdueUnpaid = due < new Date(currentYear, currentMonth, 1) && !r.isPaid
     return isThisMonth || isOverdueUnpaid
   })
 
-  // Próximo mês: vencimento exatamente no mês seguinte
-  // → allowPay = false (ainda não é hora de pagar)
   const nextMonthItems = active.filter(r => {
-    const due = new Date(r.nextDueDate)
+    const due = toLocalNoon(new Date(r.nextDueDate))
     return due.getMonth() === nextMonth && due.getFullYear() === nextYear
   })
 
-  // Futuros: tudo além do próximo mês
   const futureItems = active.filter(r => {
-    const due = new Date(r.nextDueDate)
+    const due = toLocalNoon(new Date(r.nextDueDate))
     const monthDiff = (due.getFullYear() - currentYear) * 12 + (due.getMonth() - currentMonth)
     return monthDiff > 1
   })
@@ -232,8 +238,15 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta recorrência?')) return
-    await deleteRecurringTransaction(id)
+    setDeletingId(id)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return
+    setDeleteLoading(true)
+    await deleteRecurringTransaction(deletingId)
+    setDeleteLoading(false)
+    setDeletingId(null)
     router.refresh()
   }
 
@@ -591,6 +604,19 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
             <Plus size={18} /> Cadastrar primeira recorrente
           </button>
         </div>
+      )}
+
+      {/* Modal de confirmação de exclusão */}
+      {deletingId && (
+        <ConfirmModal
+          title="Excluir recorrência"
+          description="Esta ação não pode ser desfeita. A recorrência e seu histórico serão removidos permanentemente."
+          confirmLabel="Excluir"
+          variant="danger"
+          loading={deleteLoading}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeletingId(null)}
+        />
       )}
 
       {/* Modal criar/editar */}
