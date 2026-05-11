@@ -20,30 +20,3 @@ export function calculateNextDueDate(baseDate: Date, frequency: string): Date {
 
   return next
 }
-
-/**
- * Dado um nextDueDate e a data atual, verifica se o ciclo já mudou
- * e o isPaid deveria ser resetado para false.
- *
- * Regra: se nextDueDate está no mês atual (ou futuro) e isPaid = true,
- * mas paidAt foi em um ciclo ANTERIOR ao nextDueDate atual, então
- * o pagamento foi do ciclo anterior — deve resetar.
- */
-export function shouldResetPaid(
-  nextDueDate: Date,
-  paidAt: Date | null,
-  isPaid: boolean
-): boolean {
-  if (!isPaid || !paidAt) return false
-
-  const due   = new Date(nextDueDate)
-  const paid  = new Date(paidAt)
-
-  // Se o paidAt é de um mês/ano diferente do nextDueDate atual,
-  // significa que o pagamento foi do ciclo anterior — reset necessário
-  const sameMonth = paid.getMonth() === due.getMonth() && paid.getFullYear() === due.getFullYear()
-  // Para frequências não mensais, compara por data exata
-  const sameOrAfter = paid >= due
-
-  return !sameMonth && !sameOrAfter
-}

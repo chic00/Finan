@@ -6,7 +6,7 @@ import { eq, and } from 'drizzle-orm'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
-import { calculateNextDueDate, shouldResetPaid } from '@/lib/recurringUtils'
+import { calculateNextDueDate } from '@/lib/recurringUtils'
 
 const recurringSchema = z.object({
   accountId: z.string().uuid('Conta é obrigatória'),
@@ -276,33 +276,9 @@ export async function getRecurringTransactions() {
   const session = await auth()
   if (!session?.user?.id) return []
 
-  const items = await db.query.recurringTransactions.findMany({
+  return db.query.recurringTransactions.findMany({
     where: eq(recurringTransactions.userId, session.user!.id),
     with: { account: true, category: true },
     orderBy: (r, { asc }) => [asc(r.nextDueDate)],
   })
-
-  // ── Auto-reset: se isPaid=true mas o paidAt é de um ciclo anterior
-  // ao nextDueDate atual, reseta silenciosamente no banco ─────────
-  const toReset = items.filter(r =>
-    shouldResetPaid(new Date(r.nextDueDate), r.paidAt ? new Date(r.paidAt) : null, r.isPaid)
-  )
-
-  if (toReset.length > 0) {
-    await Promise.all(
-      toReset.map(r =>
-        db.update(recurringTransactions)
-          .set({ isPaid: false, paidAt: null, updatedAt: new Date() })
-          .where(eq(recurringTransactions.id, r.id))
-      )
-    )
-    // Retorna os dados já corrigidos
-    return items.map(r =>
-      toReset.find(x => x.id === r.id)
-        ? { ...r, isPaid: false, paidAt: null }
-        : r
-    )
-  }
-
-  return items
 }
