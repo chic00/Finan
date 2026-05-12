@@ -192,13 +192,11 @@ export default async function DashboardPage() {
             {formatCurrency(monthlyExpense)}
           </p>
           <p className="text-xs mt-1" style={{ color: 'var(--color-muted-foreground)' }}>
-            {monthlyTransactions.filter((t) => t.type === 'expense').length} transação(ões) ·{' '}
-            {pendingRecurringExpense > 0 && (
-              <span style={{ color: 'var(--color-warning)' }}>
-                +{formatCurrency(pendingRecurringExpense)} pendente
-              </span>
-            )}
-            {pendingRecurringExpense === 0 && 'sem pendências'}
+            {monthlyTransactions.filter((t) => t.type === 'expense').length} paga(s)
+            {pendingRecurringExpense > 0
+              ? <span style={{ color: 'var(--color-warning)' }}> · {formatCurrency(pendingRecurringExpense)} pendente em recorrentes</span>
+              : <span style={{ color: 'var(--color-success)' }}> · tudo em dia</span>
+            }
           </p>
         </div>
       </div>
