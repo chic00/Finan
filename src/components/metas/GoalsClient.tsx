@@ -6,12 +6,10 @@ import { createGoal, updateGoal, deleteGoal, contributeToGoal } from '@/actions/
 import { Plus, Loader2, Target, Trash2, Pencil, PlusCircle, CheckCircle2 } from 'lucide-react'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import type { Goal, BankAccount } from '@/lib/db/schema'
 
-interface GoalsClientProps {
-  goals: Goal[]
-  accounts: BankAccount[]
-}
+interface GoalsClientProps { goals: Goal[]; accounts: BankAccount[] }
 
 type GoalForm = { name: string; targetAmount: number; deadline: string }
 const defaultGoalForm: GoalForm = { name: '', targetAmount: 0, deadline: '' }
@@ -19,55 +17,55 @@ type ContribForm = { amount: number; accountId: string }
 
 export function GoalsClient({ goals, accounts }: GoalsClientProps) {
   const router = useRouter()
-  const [showGoalModal, setShowGoalModal] = useState(false)
-  const [editingGoal, setEditingGoal] = useState<Goal | null>(null)
-  const [goalForm, setGoalForm] = useState<GoalForm>(defaultGoalForm)
-  const [goalLoading, setGoalLoading] = useState(false)
-  const [goalError, setGoalError] = useState('')
+  const [showGoalModal, setShowGoalModal]       = useState(false)
+  const [editingGoal, setEditingGoal]           = useState<Goal | null>(null)
+  const [goalForm, setGoalForm]                 = useState<GoalForm>(defaultGoalForm)
+  const [goalLoading, setGoalLoading]           = useState(false)
+  const [goalError, setGoalError]               = useState('')
   const [contributeTarget, setContributeTarget] = useState<Goal | null>(null)
-  const [contribForm, setContribForm] = useState<ContribForm>({ amount: 0, accountId: accounts[0]?.id || '' })
-  const [contribLoading, setContribLoading] = useState(false)
-  const [contribError, setContribError] = useState('')
+  const [contribForm, setContribForm]           = useState<ContribForm>({ amount: 0, accountId: accounts[0]?.id || '' })
+  const [contribLoading, setContribLoading]     = useState(false)
+  const [contribError, setContribError]         = useState('')
+  const [deletingId, setDeletingId]             = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading]       = useState(false)
 
   const getProgress = (goal: Goal) => {
     const current = parseFloat(goal.currentAmount as string)
-    const target = parseFloat(goal.targetAmount as string)
+    const target  = parseFloat(goal.targetAmount  as string)
     return target > 0 ? Math.min(Math.round((current / target) * 100), 100) : 0
   }
 
   const handleOpenCreate = () => {
-    setEditingGoal(null)
-    setGoalForm(defaultGoalForm)
-    setGoalError('')
-    setShowGoalModal(true)
+    setEditingGoal(null); setGoalForm(defaultGoalForm); setGoalError(''); setShowGoalModal(true)
   }
-
   const handleOpenEdit = (goal: Goal) => {
     setEditingGoal(goal)
     setGoalForm({
-      name: goal.name,
+      name:         goal.name,
       targetAmount: parseFloat(goal.targetAmount as string),
-      deadline: goal.deadline ? new Date(goal.deadline).toISOString().split('T')[0] : '',
+      deadline:     goal.deadline ? new Date(goal.deadline).toISOString().split('T')[0] : '',
     })
-    setGoalError('')
-    setShowGoalModal(true)
+    setGoalError(''); setShowGoalModal(true)
   }
 
   const handleGoalSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setGoalLoading(true)
-    setGoalError('')
-    const payload = { name: goalForm.name, targetAmount: goalForm.targetAmount, deadline: goalForm.deadline ? new Date(goalForm.deadline) : undefined }
+    e.preventDefault(); setGoalLoading(true); setGoalError('')
+    const payload = {
+      name:         goalForm.name,
+      targetAmount: goalForm.targetAmount,
+      deadline:     goalForm.deadline ? new Date(goalForm.deadline) : undefined,
+    }
     const result = editingGoal ? await updateGoal(editingGoal.id, payload) : await createGoal(payload)
     if (result?.error) { setGoalError(result.error); setGoalLoading(false); return }
-    setShowGoalModal(false)
-    setGoalLoading(false)
-    router.refresh()
+    setShowGoalModal(false); setGoalLoading(false); router.refresh()
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Excluir esta meta?')) return
-    const result = await deleteGoal(id)
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return
+    setDeleteLoading(true)
+    const result = await deleteGoal(deletingId)
+    setDeleteLoading(false)
+    setDeletingId(null)
     if (result?.error) { alert(result.error); return }
     router.refresh()
   }
@@ -81,14 +79,11 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
   const handleContributeSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!contributeTarget) return
-    setContribLoading(true)
-    setContribError('')
+    setContribLoading(true); setContribError('')
     const result = await contributeToGoal(contributeTarget.id, contribForm.amount, contribForm.accountId)
     if (result?.error) { setContribError(result.error); setContribLoading(false); return }
     if (result?.isCompleted) alert(`🎉 Parabéns! A meta "${contributeTarget.name}" foi concluída!`)
-    setContributeTarget(null)
-    setContribLoading(false)
-    router.refresh()
+    setContributeTarget(null); setContribLoading(false); router.refresh()
   }
 
   return (
@@ -106,11 +101,11 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {goals.map((goal) => {
-          const progress = getProgress(goal)
-          const current = parseFloat(goal.currentAmount as string)
-          const target = parseFloat(goal.targetAmount as string)
-          const remaining = Math.max(target - current, 0)
+        {goals.map(goal => {
+          const progress      = getProgress(goal)
+          const current       = parseFloat(goal.currentAmount as string)
+          const target        = parseFloat(goal.targetAmount  as string)
+          const remaining     = Math.max(target - current, 0)
           const progressColor = goal.isCompleted ? 'var(--color-success)' : 'var(--color-primary)'
 
           return (
@@ -126,43 +121,30 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
                     style={{ backgroundColor: goal.isCompleted ? 'color-mix(in srgb, var(--color-success) 15%, transparent)' : 'color-mix(in srgb, var(--color-primary) 15%, transparent)' }}>
                     {goal.isCompleted
                       ? <CheckCircle2 size={20} style={{ color: 'var(--color-success)' }} />
-                      : <Target size={20} style={{ color: 'var(--color-primary)' }} />
-                    }
+                      : <Target       size={20} style={{ color: 'var(--color-primary)' }} />}
                   </div>
                   <div>
                     <h3 className="font-semibold" style={{ color: 'var(--color-foreground)' }}>{goal.name}</h3>
                     {goal.deadline && (
-                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>Prazo: {formatDate(goal.deadline, 'long')}</p>
+                      <p className="text-xs" style={{ color: 'var(--color-muted-foreground)' }}>
+                        Prazo: {formatDate(goal.deadline, 'long')}
+                      </p>
                     )}
                   </div>
                 </div>
                 <div className="flex gap-1">
                   {!goal.isCompleted && (
-                    <button onClick={() => handleOpenEdit(goal)}
-                      className="p-1.5 rounded-lg transition-all"
+                    <button onClick={() => handleOpenEdit(goal)} className="p-1.5 rounded-lg transition-all"
                       style={{ color: 'var(--color-muted-foreground)' }}
-                      onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'
-                        ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
-                      }}
-                      onMouseLeave={e => {
-                        (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
-                        ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
-                      }}>
+                      onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 10%, transparent)' }}
+                      onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }}>
                       <Pencil size={14} />
                     </button>
                   )}
-                  <button onClick={() => handleDelete(goal.id)}
-                    className="p-1.5 rounded-lg transition-all"
+                  <button onClick={() => setDeletingId(goal.id)} className="p-1.5 rounded-lg transition-all"
                     style={{ color: 'var(--color-muted-foreground)' }}
-                    onMouseEnter={e => {
-                      (e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'
-                      ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)'
-                    }}
-                    onMouseLeave={e => {
-                      (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
-                      ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
-                    }}>
+                    onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)' }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }}>
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -177,7 +159,9 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
                   <div className="h-2.5 rounded-full transition-all" style={{ width: `${progress}%`, backgroundColor: progressColor }} />
                 </div>
                 {!goal.isCompleted && (
-                  <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>Faltam {formatCurrency(remaining)}</p>
+                  <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted-foreground)' }}>
+                    Faltam {formatCurrency(remaining)}
+                  </p>
                 )}
               </div>
 
@@ -206,13 +190,27 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
       </div>
 
       {goals.length === 0 && (
-        <div className="text-center py-16 rounded-2xl" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+        <div className="text-center py-16 rounded-2xl"
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
           <Target size={48} className="mx-auto mb-4" style={{ color: 'var(--color-muted-foreground)' }} />
           <p style={{ color: 'var(--color-muted-foreground)' }}>Nenhuma meta cadastrada</p>
           <button onClick={handleOpenCreate} className="mt-4 font-medium" style={{ color: 'var(--color-primary)' }}>
             Criar primeira meta
           </button>
         </div>
+      )}
+
+      {/* Confirm delete */}
+      {deletingId && (
+        <ConfirmModal
+          title="Excluir meta"
+          description="Esta meta e seu progresso serão removidos permanentemente. As transações de contribuição não serão revertidas."
+          confirmLabel="Excluir"
+          variant="danger"
+          loading={deleteLoading}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeletingId(null)}
+        />
       )}
 
       {/* Create/Edit modal */}
@@ -227,20 +225,20 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
             )}
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Nome da Meta</label>
-              <input type="text" value={goalForm.name} onChange={(e) => setGoalForm({ ...goalForm, name: e.target.value })}
+              <input type="text" value={goalForm.name} onChange={e => setGoalForm({ ...goalForm, name: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="Ex: Reserva de Emergência" required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Valor Alvo</label>
               <input type="number" step="0.01" min="1" value={goalForm.targetAmount || ''}
-                onChange={(e) => setGoalForm({ ...goalForm, targetAmount: parseFloat(e.target.value) || 0 })}
+                onChange={e => setGoalForm({ ...goalForm, targetAmount: parseFloat(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="0,00" required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Prazo (opcional)</label>
-              <input type="date" value={goalForm.deadline} onChange={(e) => setGoalForm({ ...goalForm, deadline: e.target.value })}
+              <input type="date" value={goalForm.deadline} onChange={e => setGoalForm({ ...goalForm, deadline: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input" />
             </div>
             <div className="flex gap-3 pt-2">
@@ -276,9 +274,9 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Conta de Origem</label>
-              <select value={contribForm.accountId} onChange={(e) => setContribForm({ ...contribForm, accountId: e.target.value })}
+              <select value={contribForm.accountId} onChange={e => setContribForm({ ...contribForm, accountId: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select" required>
-                {accounts.map((acc) => (
+                {accounts.map(acc => (
                   <option key={acc.id} value={acc.id}>
                     {acc.name} — {formatCurrency(parseFloat(acc.balance as string))}
                   </option>
@@ -288,7 +286,7 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Valor da Contribuição</label>
               <input type="number" step="0.01" min="0.01" value={contribForm.amount || ''}
-                onChange={(e) => setContribForm({ ...contribForm, amount: parseFloat(e.target.value) || 0 })}
+                onChange={e => setContribForm({ ...contribForm, amount: parseFloat(e.target.value) || 0 })}
                 className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="0,00" required />
             </div>
