@@ -5,75 +5,62 @@ import { useRouter } from 'next/navigation'
 import { createCategory, updateCategory, deleteCategory } from '@/actions/categories'
 import { Plus, Trash2, Pencil, Loader2, Tag } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import { ConfirmModal } from '@/components/ui/ConfirmModal'
 import type { Category } from '@/lib/db/schema'
 
-interface CategoriesClientProps {
-  categories: Category[]
-}
+interface CategoriesClientProps { categories: Category[] }
 
 const categoryColors = [
-  '#EF4444', '#F97316', '#F59E0B', '#84CC16', '#22C55E',
-  '#14B8A6', '#06B6D4', '#3B82F6', '#6366F1', '#8B5CF6',
-  '#EC4899', '#F43F5E', '#64748B', '#78716C',
+  '#EF4444','#F97316','#F59E0B','#84CC16','#22C55E',
+  '#14B8A6','#06B6D4','#3B82F6','#6366F1','#8B5CF6',
+  '#EC4899','#F43F5E','#64748B','#78716C',
 ]
 
-type FormState = {
-  name: string
-  type: 'income' | 'expense' | 'transfer'
-  color: string
-}
-
+type FormState = { name: string; type: 'income' | 'expense' | 'transfer'; color: string }
 const defaultForm: FormState = { name: '', type: 'expense', color: '#6B7280' }
 
 export function CategoriesClient({ categories }: CategoriesClientProps) {
   const router = useRouter()
-  const [showModal, setShowModal] = useState(false)
+  const [showModal, setShowModal]           = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [form, setForm] = useState<FormState>(defaultForm)
+  const [loading, setLoading]               = useState(false)
+  const [error, setError]                   = useState('')
+  const [form, setForm]                     = useState<FormState>(defaultForm)
+  const [deletingId, setDeletingId]         = useState<string | null>(null)
+  const [deleteLoading, setDeleteLoading]   = useState(false)
 
-  const groupedCategories = {
-    income:   categories.filter((c) => c.type === 'income'),
-    expense:  categories.filter((c) => c.type === 'expense'),
-    transfer: categories.filter((c) => c.type === 'transfer'),
+  const grouped = {
+    income:   categories.filter(c => c.type === 'income'),
+    expense:  categories.filter(c => c.type === 'expense'),
+    transfer: categories.filter(c => c.type === 'transfer'),
   }
 
   const handleOpenCreate = () => {
-    setEditingCategory(null)
-    setForm(defaultForm)
-    setError('')
-    setShowModal(true)
+    setEditingCategory(null); setForm(defaultForm); setError(''); setShowModal(true)
   }
-
   const handleOpenEdit = (cat: Category) => {
     setEditingCategory(cat)
     setForm({ name: cat.name, type: cat.type as FormState['type'], color: cat.color || '#6B7280' })
-    setError('')
-    setShowModal(true)
+    setError(''); setShowModal(true)
   }
-
-  const handleClose = () => {
-    setShowModal(false)
-    setEditingCategory(null)
-    setError('')
-  }
+  const handleClose = () => { setShowModal(false); setEditingCategory(null); setError('') }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
-    const result = editingCategory ? await updateCategory(editingCategory.id, form) : await createCategory(form)
+    e.preventDefault(); setLoading(true); setError('')
+    const result = editingCategory
+      ? await updateCategory(editingCategory.id, form)
+      : await createCategory(form)
     setLoading(false)
     if (result?.error) { setError(result.error); return }
-    setShowModal(false)
-    setEditingCategory(null)
-    router.refresh()
+    setShowModal(false); setEditingCategory(null); router.refresh()
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Tem certeza que deseja excluir esta categoria?')) return
-    const result = await deleteCategory(id)
+  const handleDeleteConfirm = async () => {
+    if (!deletingId) return
+    setDeleteLoading(true)
+    const result = await deleteCategory(deletingId)
+    setDeleteLoading(false)
+    setDeletingId(null)
     if (result?.error) { alert(result.error); return }
     router.refresh()
   }
@@ -81,7 +68,6 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
   const typeLabel: Record<string, string> = {
     income: 'Receitas', expense: 'Despesas', transfer: 'Transferências',
   }
-
   const typeAccentColor: Record<string, string> = {
     income: 'var(--color-success)',
     expense: 'var(--color-destructive)',
@@ -102,19 +88,19 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
         </button>
       </div>
 
-      {(Object.entries(groupedCategories) as [string, Category[]][]).map(([type, cats]) => (
+      {(Object.entries(grouped) as [string, Category[]][]).map(([type, cats]) => (
         <div key={type}>
           <div className="flex items-center gap-2 mb-4">
             <div className="w-1 h-5 rounded-full" style={{ backgroundColor: typeAccentColor[type] }} />
             <h2 className="text-base font-semibold" style={{ color: 'var(--color-foreground)' }}>{typeLabel[type]}</h2>
-            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-muted-foreground)' }}>
+            <span className="text-xs px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: 'var(--color-secondary)', color: 'var(--color-muted-foreground)' }}>
               {cats.length}
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {cats.map((cat) => (
-              <div key={cat.id}
-                className="rounded-2xl p-4 transition-all hover:scale-[1.01]"
+            {cats.map(cat => (
+              <div key={cat.id} className="rounded-2xl p-4 transition-all hover:scale-[1.01]"
                 style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0">
@@ -131,30 +117,16 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
                   </div>
                   {!cat.isSystem && (
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => handleOpenEdit(cat)}
-                        className="p-1.5 rounded-lg transition-all"
+                      <button onClick={() => handleOpenEdit(cat)} className="p-1.5 rounded-lg transition-all"
                         style={{ color: 'var(--color-muted-foreground)' }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'
-                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 10%, transparent)'
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
-                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
-                        }}>
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-primary) 10%, transparent)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }}>
                         <Pencil size={13} />
                       </button>
-                      <button onClick={() => handleDelete(cat.id)}
-                        className="p-1.5 rounded-lg transition-all"
+                      <button onClick={() => setDeletingId(cat.id)} className="p-1.5 rounded-lg transition-all"
                         style={{ color: 'var(--color-muted-foreground)' }}
-                        onMouseEnter={e => {
-                          (e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'
-                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)'
-                        }}
-                        onMouseLeave={e => {
-                          (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'
-                          ;(e.currentTarget as HTMLElement).style.backgroundColor = 'transparent'
-                        }}>
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-destructive)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'color-mix(in srgb, var(--color-destructive) 10%, transparent)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--color-muted-foreground)'; (e.currentTarget as HTMLElement).style.backgroundColor = 'transparent' }}>
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -167,10 +139,23 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
       ))}
 
       {categories.length === 0 && (
-        <div className="text-center py-16 rounded-2xl" style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
+        <div className="text-center py-16 rounded-2xl"
+          style={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)' }}>
           <Tag size={48} className="mx-auto mb-4" style={{ color: 'var(--color-muted-foreground)' }} />
           <p style={{ color: 'var(--color-muted-foreground)' }}>Nenhuma categoria encontrada</p>
         </div>
+      )}
+
+      {deletingId && (
+        <ConfirmModal
+          title="Excluir categoria"
+          description="As transações vinculadas a esta categoria ficarão sem categoria. Esta ação não pode ser desfeita."
+          confirmLabel="Excluir"
+          variant="danger"
+          loading={deleteLoading}
+          onConfirm={handleDeleteConfirm}
+          onCancel={() => setDeletingId(null)}
+        />
       )}
 
       {showModal && (
@@ -184,13 +169,13 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
             )}
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Nome</label>
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
+              <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                 className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-input"
                 placeholder="Ex: Alimentação" required />
             </div>
             <div>
               <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-foreground)' }}>Tipo</label>
-              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value as FormState['type'] })}
+              <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value as FormState['type'] })}
                 className="w-full px-4 py-2.5 rounded-xl outline-none transition-all theme-select">
                 <option value="expense">Despesa</option>
                 <option value="income">Receita</option>
@@ -200,12 +185,12 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
             <div>
               <label className="block text-sm font-medium mb-2" style={{ color: 'var(--color-foreground)' }}>Cor</label>
               <div className="flex flex-wrap gap-2">
-                {categoryColors.map((color) => (
+                {categoryColors.map(color => (
                   <button key={color} type="button" onClick={() => setForm({ ...form, color })}
                     className="w-8 h-8 rounded-xl transition-all"
                     style={{
                       backgroundColor: color,
-                      outline: form.color === color ? `3px solid var(--color-primary)` : 'none',
+                      outline: form.color === color ? '3px solid var(--color-primary)' : 'none',
                       outlineOffset: '2px',
                       transform: form.color === color ? 'scale(1.15)' : 'scale(1)',
                     }} />
