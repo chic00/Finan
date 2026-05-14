@@ -17,6 +17,7 @@ import {
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { useToast } from '@/components/ui/Toast'
 import type { BankAccount, Category } from '@/lib/db/schema'
 
 interface RecurringWithRelations {
@@ -125,6 +126,7 @@ function SectionHeader({
 
 export function RecorrentesClient({ recorrentes, accounts, categories }: Props) {
   const router = useRouter()
+  const { toast } = useToast()
   const [showModal, setShowModal]     = useState(false)
   const [editingId, setEditingId]     = useState<string | null>(null)
   const [loading, setLoading]         = useState(false)
@@ -247,6 +249,7 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
     await deleteRecurringTransaction(deletingId)
     setDeleteLoading(false)
     setDeletingId(null)
+    toast('Recorrência excluída com sucesso')
     router.refresh()
   }
 
@@ -259,7 +262,7 @@ export function RecorrentesClient({ recorrentes, accounts, categories }: Props) 
     setTogglingId(id)
     const result = await togglePaid(id)
     setTogglingId(null)
-    if (result?.error) { alert(result.error); return }
+    if (result?.error) { toast(result.error, 'error'); return }
     router.refresh()
   }
 

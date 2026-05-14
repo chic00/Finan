@@ -7,6 +7,7 @@ import { Plus, Loader2, AlertTriangle, Trash2, Pencil } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { useToast } from '@/components/ui/Toast'
 import type { Category } from '@/lib/db/schema'
 
 interface BudgetWithSpent {
@@ -35,6 +36,7 @@ const MONTHS = [
 
 export function OrcamentosClient({ budgets, categories, currentMonth, currentYear }: OrcamentosClientProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [showCreateModal, setShowCreateModal]   = useState(false)
   const [createLoading, setCreateLoading]       = useState(false)
   const [createError, setCreateError]           = useState('')
@@ -79,7 +81,8 @@ export function OrcamentosClient({ budgets, categories, currentMonth, currentYea
     const result = await deleteBudget(deletingId)
     setDeleteLoading(false)
     setDeletingId(null)
-    if (result?.error) { alert(result.error); return }
+    if (result?.error) { toast(result.error, 'error'); return }
+    toast('Orçamento excluído com sucesso')
     router.refresh()
   }
 

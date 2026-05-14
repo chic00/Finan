@@ -6,6 +6,7 @@ import { createCategory, updateCategory, deleteCategory } from '@/actions/catego
 import { Plus, Trash2, Pencil, Loader2, Tag } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { useToast } from '@/components/ui/Toast'
 import type { Category } from '@/lib/db/schema'
 
 interface CategoriesClientProps { categories: Category[] }
@@ -21,6 +22,7 @@ const defaultForm: FormState = { name: '', type: 'expense', color: '#6B7280' }
 
 export function CategoriesClient({ categories }: CategoriesClientProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [showModal, setShowModal]           = useState(false)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
   const [loading, setLoading]               = useState(false)
@@ -61,7 +63,8 @@ export function CategoriesClient({ categories }: CategoriesClientProps) {
     const result = await deleteCategory(deletingId)
     setDeleteLoading(false)
     setDeletingId(null)
-    if (result?.error) { alert(result.error); return }
+    if (result?.error) { toast(result.error, 'error'); return }
+    toast('Categoria excluída com sucesso')
     router.refresh()
   }
 

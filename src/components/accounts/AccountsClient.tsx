@@ -11,6 +11,7 @@ import { formatCurrency } from '@/lib/utils'
 import type { BankAccount } from '@/lib/db/schema'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { useToast } from '@/components/ui/Toast'
 
 const accountTypes = [
   { value: 'checking',   label: 'Conta Corrente', icon: Wallet,      color: '#3B82F6' },
@@ -32,6 +33,7 @@ const defaultForm: FormState = { name: '', type: 'checking', balance: 0, color: 
 
 export function AccountsClient({ accounts }: AccountsClientProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [showModal, setShowModal]       = useState(false)
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null)
   const [loading, setLoading]           = useState(false)
@@ -66,7 +68,8 @@ export function AccountsClient({ accounts }: AccountsClientProps) {
     const result = await deleteAccount(deletingId)
     setDeleteLoading(false)
     setDeletingId(null)
-    if (result?.error) { alert(result.error); return }
+    if (result?.error) { toast(result.error, 'error'); return }
+    toast('Conta excluída com sucesso')
     router.refresh()
   }
 
