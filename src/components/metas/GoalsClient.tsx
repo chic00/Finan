@@ -85,7 +85,8 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
     setContribLoading(true); setContribError('')
     const result = await contributeToGoal(contributeTarget.id, contribForm.amount, contribForm.accountId)
     if (result?.error) { setContribError(result.error); setContribLoading(false); return }
-    if (result?.isCompleted) alert(`🎉 Parabéns! A meta "${contributeTarget.name}" foi concluída!`)
+    if (result?.isCompleted) toast(`🎉 Meta "${contributeTarget.name}" concluída!`, 'success')
+    else toast('Contribuição registrada com sucesso')
     setContributeTarget(null); setContribLoading(false); router.refresh()
   }
 
