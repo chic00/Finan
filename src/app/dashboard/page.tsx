@@ -11,6 +11,8 @@ import { RecurringAlert } from '@/components/dashboard/RecurringAlert'
 import { checkBudgetAlerts } from '@/actions/budgets'
 import { TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 
+export const metadata = { title: 'Dashboard | Fyneo' }
+
 export default async function DashboardPage() {
   const session = await auth()
   const userId = session!.user!.id!

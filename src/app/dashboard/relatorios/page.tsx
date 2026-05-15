@@ -3,6 +3,8 @@ import { db, transactions } from '@/lib/db'
 import { eq, and, gte, lte, desc } from 'drizzle-orm'
 import { RelatoriosClient } from '@/components/relatorios/RelatoriosClient'
 
+export const metadata = { title: 'Relatórios | Fyneo' }
+
 interface Props {
   searchParams: Promise<{ from?: string; to?: string }>
 }

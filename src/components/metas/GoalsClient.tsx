@@ -7,6 +7,7 @@ import { Plus, Loader2, Target, Trash2, Pencil, PlusCircle, CheckCircle2 } from 
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { useToast } from '@/components/ui/Toast'
 import type { Goal, BankAccount } from '@/lib/db/schema'
 
 interface GoalsClientProps { goals: Goal[]; accounts: BankAccount[] }
@@ -17,6 +18,7 @@ type ContribForm = { amount: number; accountId: string }
 
 export function GoalsClient({ goals, accounts }: GoalsClientProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [showGoalModal, setShowGoalModal]       = useState(false)
   const [editingGoal, setEditingGoal]           = useState<Goal | null>(null)
   const [goalForm, setGoalForm]                 = useState<GoalForm>(defaultGoalForm)
@@ -66,7 +68,8 @@ export function GoalsClient({ goals, accounts }: GoalsClientProps) {
     const result = await deleteGoal(deletingId)
     setDeleteLoading(false)
     setDeletingId(null)
-    if (result?.error) { alert(result.error); return }
+    if (result?.error) { toast(result.error, 'error'); return }
+    toast('Meta excluída com sucesso')
     router.refresh()
   }
 

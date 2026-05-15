@@ -3,6 +3,8 @@ import { getAccounts } from '@/actions/accounts'
 import { getCategories } from '@/actions/categories'
 import { TransactionsClient } from '@/components/transactions/TransactionsClient'
 
+export const metadata = { title: 'Transações | Fyneo' }
+
 interface Props {
   searchParams: Promise<{ month?: string; year?: string }>
 }

@@ -11,6 +11,7 @@ import {
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { Modal } from '@/components/ui/Modal'
 import { ConfirmModal } from '@/components/ui/ConfirmModal'
+import { useToast } from '@/components/ui/Toast'
 import type { BankAccount, Category } from '@/lib/db/schema'
 
 interface TransactionWithDetails {
@@ -67,6 +68,7 @@ export function TransactionsClient({
   currentYear,
 }: TransactionsClientProps) {
   const router = useRouter()
+  const { toast } = useToast()
   const [showModal, setShowModal]         = useState(false)
   const [editingId, setEditingId]         = useState<string | null>(null)
   const [loading, setLoading]             = useState(false)
@@ -165,7 +167,8 @@ export function TransactionsClient({
     const result = await deleteTransaction(deletingId)
     setDeleteLoading(false)
     setDeletingId(null)
-    if (result?.error) { alert(result.error); return }
+    if (result?.error) { toast(result.error, 'error'); return }
+    toast('Transação excluída com sucesso')
     router.refresh()
   }
 
