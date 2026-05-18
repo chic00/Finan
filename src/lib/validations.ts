@@ -5,6 +5,7 @@ export const loginSchema = z.object({
   password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 })
 
+// Schema usado APENAS no cliente — inclui confirmPassword para validação de UI
 export const registerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
   email: z.string().email('Email inválido'),
@@ -13,6 +14,13 @@ export const registerSchema = z.object({
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Senhas não coincidem',
   path: ['confirmPassword'],
+})
+
+// Schema usado no SERVIDOR (API route) — sem confirmPassword
+export const registerServerSchema = z.object({
+  name: z.string().min(2, 'Nome deve ter no mínimo 2 caracteres'),
+  email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter no mínimo 6 caracteres'),
 })
 
 export const accountSchema = z.object({
@@ -70,12 +78,13 @@ export const recurringTransactionSchema = z.object({
   endDate: z.coerce.date().optional(),
 })
 
-export type LoginInput = z.infer<typeof loginSchema>
-export type RegisterInput = z.infer<typeof registerSchema>
-export type AccountInput = z.infer<typeof accountSchema>
-export type TransactionInput = z.infer<typeof transactionSchema>
-export type CategoryInput = z.infer<typeof categorySchema>
-export type BudgetInput = z.infer<typeof budgetSchema>
-export type GoalInput = z.infer<typeof goalSchema>
-export type GoalContributionInput = z.infer<typeof goalContributionSchema>
+export type LoginInput               = z.infer<typeof loginSchema>
+export type RegisterInput            = z.infer<typeof registerSchema>
+export type RegisterServerInput      = z.infer<typeof registerServerSchema>
+export type AccountInput             = z.infer<typeof accountSchema>
+export type TransactionInput         = z.infer<typeof transactionSchema>
+export type CategoryInput            = z.infer<typeof categorySchema>
+export type BudgetInput              = z.infer<typeof budgetSchema>
+export type GoalInput                = z.infer<typeof goalSchema>
+export type GoalContributionInput    = z.infer<typeof goalContributionSchema>
 export type RecurringTransactionInput = z.infer<typeof recurringTransactionSchema>
