@@ -51,29 +51,26 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    const result = await db.transaction(async (tx) => {
-      const [user] = await tx.insert(users).values({
-        name,
-        email,
-        password: hashedPassword,
-      }).returning()
+    // neon-http não suporta transações — operações sequenciais
+    const [user] = await db.insert(users).values({
+      name,
+      email,
+      password: hashedPassword,
+    }).returning()
 
-      await initDefaultCategories(user.id)
+    await initDefaultCategories(user.id)
 
-      const token     = randomUUID()
-      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const token     = randomUUID()
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-      await tx.insert(emailVerifications).values({
-        userId: user.id,
-        token,
-        expiresAt,
-      })
-
-      return { user, token }
+    await db.insert(emailVerifications).values({
+      userId: user.id,
+      token,
+      expiresAt,
     })
 
     const appUrl          = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
-    const verificationUrl = `${appUrl}/verify-email?token=${result.token}`
+    const verificationUrl = `${appUrl}/verify-email?token=${token}`
 
     await sendVerificationEmail(email, {
       userName: name,
