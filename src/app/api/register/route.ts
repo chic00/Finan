@@ -4,15 +4,14 @@ import { db, users, emailVerifications } from '@/lib/db'
 import { initDefaultCategories } from '@/actions/categories'
 import { sendVerificationEmail } from '@/lib/email'
 import { randomUUID } from 'crypto'
-import { registerSchema } from '@/lib/validations'
+import { registerServerSchema } from '@/lib/validations'
 import { rateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
   try {
-    // SEGURANÇA: Rate Limiting para evitar abusos no registro (máx 5 por hora por IP)
     const ip = req.headers.get('x-forwarded-for') || 'anonymous'
     const rl = await rateLimit(`register_${ip}`, 5, 60 * 60 * 1000)
-    
+
     if (!rl.success) {
       return NextResponse.json(
         { error: 'Muitas tentativas de registro. Tente novamente mais tarde.' },
@@ -21,9 +20,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json()
-    
-    // SEGURANÇA: Validação robusta usando o schema central (Zod)
-    const parsed = registerSchema.safeParse(body)
+
+    const parsed = registerServerSchema.safeParse(body)
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
@@ -33,10 +31,6 @@ export async function POST(req: Request) {
 
     const { name, email, password } = parsed.data
 
-    // SEGURANÇA: Previne que usuários injetem dados extras
-    const userData = { name, email, password }
-
-    // Verifica se email já existe
     const existing = await db.query.users.findFirst({
       where: (u, { eq }) => eq(u.email, email),
     })
@@ -57,20 +51,16 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // SEGURANÇA: Garantindo atomicidade com transação de banco de dados
     const result = await db.transaction(async (tx) => {
-      // 1. Cria o usuário
       const [user] = await tx.insert(users).values({
-        name: userData.name,
-        email: userData.email,
+        name,
+        email,
         password: hashedPassword,
       }).returning()
 
-      // 2. Inicializa categorias padrão
       await initDefaultCategories(user.id)
 
-      // 3. Gera token de verificação
-      const token = randomUUID()
+      const token     = randomUUID()
       const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
       await tx.insert(emailVerifications).values({
@@ -82,9 +72,7 @@ export async function POST(req: Request) {
       return { user, token }
     })
 
-    // Envia email de verificação
-    const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
-    // PADRONIZAÇÃO: URL consistente com o helper e a rota de verificação
+    const appUrl          = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
     const verificationUrl = `${appUrl}/verify-email?token=${result.token}`
 
     await sendVerificationEmail(email, {
@@ -107,15 +95,14 @@ export async function POST(req: Request) {
 
 async function resendVerification(userId: string, email: string, name: string) {
   try {
-    const token = randomUUID()
+    const token     = randomUUID()
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
     await db.insert(emailVerifications).values({ userId, token, expiresAt })
 
     const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
-    // PADRONIZAÇÃO: URL consistente
     await sendVerificationEmail(email, {
-      userName: name,
+      userName:        name,
       verificationUrl: `${appUrl}/verify-email?token=${token}`,
     })
   } catch (err) {
