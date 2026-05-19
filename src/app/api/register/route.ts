@@ -7,6 +7,8 @@ import { randomUUID } from 'crypto'
 import { registerServerSchema } from '@/lib/validations'
 import { rateLimit } from '@/lib/rate-limit'
 
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
+
 export async function POST(req: Request) {
   try {
     const ip = req.headers.get('x-forwarded-for') || 'anonymous'
@@ -19,9 +21,9 @@ export async function POST(req: Request) {
       )
     }
 
-    const body = await req.json()
-
+    const body   = await req.json()
     const parsed = registerServerSchema.safeParse(body)
+
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.issues[0].message },
@@ -43,15 +45,11 @@ export async function POST(req: Request) {
           { status: 400 }
         )
       }
-      return NextResponse.json(
-        { error: 'Email já cadastrado' },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Email já cadastrado' }, { status: 400 })
     }
 
     const hashedPassword = await bcrypt.hash(password, 12)
 
-    // neon-http não suporta transações — operações sequenciais
     const [user] = await db.insert(users).values({
       name,
       email,
@@ -63,18 +61,12 @@ export async function POST(req: Request) {
     const token     = randomUUID()
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    await db.insert(emailVerifications).values({
-      userId: user.id,
-      token,
-      expiresAt,
-    })
+    await db.insert(emailVerifications).values({ userId: user.id, token, expiresAt })
 
-    const appUrl          = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
-    const verificationUrl = `${appUrl}/verify-email?token=${token}`
-
+    // ✅ URL correta: /api/verify-email (rota que processa o token)
     await sendVerificationEmail(email, {
-      userName: name,
-      verificationUrl,
+      userName:        name,
+      verificationUrl: `${BASE_URL}/api/verify-email?token=${token}`,
     })
 
     return NextResponse.json(
@@ -83,10 +75,7 @@ export async function POST(req: Request) {
     )
   } catch (error) {
     console.error('Register error:', error)
-    return NextResponse.json(
-      { error: 'Erro interno do servidor' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
   }
 }
 
@@ -97,10 +86,10 @@ async function resendVerification(userId: string, email: string, name: string) {
 
     await db.insert(emailVerifications).values({ userId, token, expiresAt })
 
-    const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
+    // ✅ URL correta: /api/verify-email
     await sendVerificationEmail(email, {
       userName:        name,
-      verificationUrl: `${appUrl}/verify-email?token=${token}`,
+      verificationUrl: `${BASE_URL}/api/verify-email?token=${token}`,
     })
   } catch (err) {
     console.error('Resend verification error:', err)
