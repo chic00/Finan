@@ -5,12 +5,13 @@ import { sendVerificationEmail } from '@/lib/email'
 import { randomUUID } from 'crypto'
 import { rateLimit } from '@/lib/rate-limit'
 
+const BASE_URL = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
+
 export async function POST(req: Request) {
   try {
-    // SEGURANÇA: Rate Limiting para evitar abuso de envio de emails (máx 3 por hora por IP)
     const ip = req.headers.get('x-forwarded-for') || 'anonymous'
     const rl = await rateLimit(`resend_${ip}`, 3, 60 * 60 * 1000)
-    
+
     if (!rl.success) {
       return NextResponse.json(
         { error: 'Muitas solicitações de email. Tente novamente mais tarde.' },
@@ -28,26 +29,20 @@ export async function POST(req: Request) {
       where: eq(users.email, email),
     })
 
-    // Segurança: não revelar se o email existe ou não para evitar enumeração
+    // Não revela se o email existe ou não
     if (!user || user.emailVerified) {
       return NextResponse.json({ success: true })
     }
 
-    // Gera novo token
-    const token = randomUUID()
+    const token     = randomUUID()
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    await db.insert(emailVerifications).values({
-      userId: user.id,
-      token,
-      expiresAt,
-    })
+    await db.insert(emailVerifications).values({ userId: user.id, token, expiresAt })
 
-    const appUrl = process.env.NEXTAUTH_URL || 'https://fyneo.vercel.app'
-    // PADRONIZAÇÃO: URL consistente
+    // ✅ URL correta: /api/verify-email (rota que processa o token)
     await sendVerificationEmail(email, {
-      userName: user.name || 'Usuário',
-      verificationUrl: `${appUrl}/verify-email?token=${token}`,
+      userName:        user.name || 'Usuário',
+      verificationUrl: `${BASE_URL}/api/verify-email?token=${token}`,
     })
 
     return NextResponse.json({ success: true })
