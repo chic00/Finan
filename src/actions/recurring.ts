@@ -129,15 +129,15 @@ export async function togglePaid(id: string) {
   const finished = !!(recurring.endDate && next > new Date(recurring.endDate))
 
   await db.update(recurringTransactions)
-    .set({
-      isPaid:        true,
-      paidAt:        now,
-      nextDueDate:   next,
-      lastGenerated: now,
-      isActive:      finished ? false : recurring.isActive,
-      updatedAt:     now,
-    })
-    .where(eq(recurringTransactions.id, id))
+  .set({
+    isPaid:        false,
+    paidAt:        null,
+    nextDueDate:   next,
+    lastGenerated: now,
+    isActive:      finished ? false : recurring.isActive,
+    updatedAt:     now,
+  })
+  .where(eq(recurringTransactions.id, id))
 
   revalidatePath('/dashboard/recorrentes')
   revalidatePath('/dashboard')
