@@ -7,7 +7,7 @@ import { RecentTransactions } from '@/components/dashboard/RecentTransactions'
 import { CategoryChart } from '@/components/dashboard/CategoryChart'
 import { BalanceOverview } from '@/components/dashboard/BalanceOverview'
 import { BudgetAlerts } from '@/components/dashboard/BudgetAlerts'
-import { RecurringAlert } from '@/components/dashboard/RecurringAlert'
+import { RecurringAlertWrapper } from '@/components/dashboard/RecurringAlertWrapper'
 import { checkBudgetAlerts } from '@/actions/budgets'
 import { TrendingUp, TrendingDown, Wallet } from 'lucide-react'
 
@@ -205,7 +205,7 @@ export default async function DashboardPage() {
 
       {/* Bloco de recorrentes do mês */}
       {relevantRecurring.length > 0 && (
-        <RecurringAlert items={relevantRecurring} />
+        <RecurringAlertWrapper items={relevantRecurring} />
       )}
 
       {/* Gráficos */}

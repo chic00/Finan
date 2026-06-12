@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { RefreshCw, CheckCircle2, Circle, AlertTriangle, ArrowRight } from 'lucide-react'
+import { RefreshCw, CheckCircle2, Circle, AlertTriangle, ArrowRight, Loader2 } from 'lucide-react'
 
 interface RecurringItem {
   id: string
@@ -9,12 +9,15 @@ interface RecurringItem {
   amount: string
   nextDueDate: Date
   isPaid: boolean
+  paidAt: Date | null
   frequency: string
   category?: { name: string; color: string | null } | null
 }
 
 interface RecurringAlertProps {
   items: RecurringItem[]
+  onTogglePaid: (id: string) => void
+  togglingId: string | null
 }
 
 function daysUntil(date: Date): number {
@@ -23,16 +26,17 @@ function daysUntil(date: Date): number {
   return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-function daysLabel(days: number, isPaid: boolean): { text: string; color: string } {
-  if (isPaid)     return { text: 'Pago',              color: 'var(--color-success)' }
-  if (days < 0)   return { text: `Vencida há ${Math.abs(days)}d`, color: 'var(--color-destructive)' }
-  if (days === 0) return { text: 'Vence hoje!',       color: 'var(--color-destructive)' }
-  if (days === 1) return { text: 'Vence amanhã',      color: 'var(--color-warning)' }
-  if (days <= 5)  return { text: `Vence em ${days}d`, color: 'var(--color-warning)' }
-  return               { text: formatDate(new Date()),  color: 'var(--color-muted-foreground)' }
+function daysLabel(days: number, isPaid: boolean, dueDate: Date): { text: string; color: string } {
+  const dateStr = formatDate(dueDate)
+  if (isPaid)     return { text: 'Pago',                                        color: 'var(--color-success)' }
+  if (days < 0)   return { text: `Vencida há ${Math.abs(days)}d · ${dateStr}`,  color: 'var(--color-destructive)' }
+  if (days === 0) return { text: `Vence hoje · ${dateStr}`,                     color: 'var(--color-destructive)' }
+  if (days === 1) return { text: `Vence amanhã · ${dateStr}`,                   color: 'var(--color-warning)' }
+  if (days <= 5)  return { text: `Vence em ${days}d · ${dateStr}`,              color: 'var(--color-warning)' }
+  return               { text: dateStr,                                         color: 'var(--color-muted-foreground)' }
 }
 
-export function RecurringAlert({ items }: RecurringAlertProps) {
+export function RecurringAlert({ items, onTogglePaid, togglingId }: RecurringAlertProps) {
   if (items.length === 0) return null
 
   const totalExpense = items
@@ -139,9 +143,9 @@ export function RecurringAlert({ items }: RecurringAlertProps) {
       {/* Lista de itens */}
       <div>
         {sorted.map((item, i) => {
-          const days  = daysUntil(new Date(item.nextDueDate))
-          const label = daysLabel(days, item.isPaid)
-          const isLate = !item.isPaid && days < 0
+          const days     = daysUntil(new Date(item.nextDueDate))
+          const label    = daysLabel(days, item.isPaid, new Date(item.nextDueDate))
+          const isLate   = !item.isPaid && days < 0
           const isExpense = item.type === 'expense'
 
           return (
@@ -192,19 +196,38 @@ export function RecurringAlert({ items }: RecurringAlertProps) {
                 </div>
               </div>
 
-              {/* Right: amount */}
-              <p
-                className="text-sm font-bold flex-shrink-0 ml-4"
-                style={{
-                  color: item.isPaid
-                    ? 'var(--color-muted-foreground)'
-                    : isExpense
-                      ? 'var(--color-destructive)'
-                      : 'var(--color-success)',
-                }}
-              >
-                {isExpense ? '-' : '+'}{formatCurrency(parseFloat(item.amount))}
-              </p>
+              {/* Right: botão pagar + valor */}
+              <div className="flex items-center gap-3 flex-shrink-0 ml-4">
+                {!item.isPaid && (
+                  <button
+                    onClick={() => onTogglePaid(item.id)}
+                    disabled={togglingId === item.id}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 flex items-center gap-1"
+                    style={{
+                      color: 'var(--color-success)',
+                      backgroundColor: 'color-mix(in srgb, var(--color-success) 12%, transparent)',
+                      border: '1px solid color-mix(in srgb, var(--color-success) 30%, transparent)',
+                    }}
+                  >
+                    {togglingId === item.id
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : 'Pagar'
+                    }
+                  </button>
+                )}
+                <p
+                  className="text-sm font-bold"
+                  style={{
+                    color: item.isPaid
+                      ? 'var(--color-muted-foreground)'
+                      : isExpense
+                        ? 'var(--color-destructive)'
+                        : 'var(--color-success)',
+                  }}
+                >
+                  {isExpense ? '-' : '+'}{formatCurrency(parseFloat(item.amount))}
+                </p>
+              </div>
             </div>
           )
         })}
