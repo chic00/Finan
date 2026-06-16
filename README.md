@@ -205,4 +205,4 @@ npm run lint       # ESLint
 
 ## 📄 Licença
 
-ISC © [Seu Nome]
+ISC © [Francisco Barros]
