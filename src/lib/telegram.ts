@@ -67,7 +67,7 @@ export async function sendDueBillTelegram(
   const sep = '─────────────────────'
 
   const message =
-    `${urgencyIcon} <b>Finan — Lembrete de vencimento</b>\n` +
+    `${urgencyIcon} <b>Fyneo — Lembrete de vencimento</b>\n` +
     `${sep}\n` +
     `Olá, <b>${data.userName}</b>! A conta abaixo ${urgencyText}:\n\n` +
     `📋 <b>${data.billName}</b>\n` +
